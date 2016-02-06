@@ -461,6 +461,7 @@ void CUnit::Init()
 	Prefix = NULL;
 	Suffix = NULL;
 	Spell = NULL;
+	Work = NULL;
 	Unique = false;
 	Bound = false;
 	//Wyrmgus end
@@ -581,6 +582,7 @@ void CUnit::Release(bool final)
 	Prefix = NULL;
 	Suffix = NULL;
 	Spell = NULL;
+	Work = NULL;
 	Unique = false;
 	Bound = false;
 	
@@ -614,10 +616,12 @@ void CUnit::IncreaseLevel(int level_quantity)
 			}
 			
 			this->Variable[LEVELUP_INDEX].Value += 1;
+			this->Variable[LEVELUP_INDEX].Max = this->Variable[LEVELUP_INDEX].Value;
 			// if there are no level-up upgrades available for the unit, increase its HP instead
 			if (this->GetAvailableLevelUpUpgrades() < this->Variable[LEVELUP_INDEX].Value) {
 				this->Variable[HP_INDEX].Max += 15;
 				this->Variable[LEVELUP_INDEX].Value -= 1;
+				this->Variable[LEVELUP_INDEX].Max = this->Variable[LEVELUP_INDEX].Value;
 			}
 		}
 		this->Variable[HP_INDEX].Value = this->Variable[HP_INDEX].Max;
@@ -627,7 +631,9 @@ void CUnit::IncreaseLevel(int level_quantity)
 	UpdateXPRequired();
 	
 	if (Player->AiEnabled) {
-		while (this->Variable[LEVELUP_INDEX].Value > 0) {
+		bool upgrade_found = true;
+		while (this->Variable[LEVELUP_INDEX].Value > 0 && upgrade_found) {
+			upgrade_found = false;
 			if (((int) AiHelpers.ExperienceUpgrades.size()) > Type->Slot) {
 				std::vector<CUnitType *> potential_upgrades;
 				for (size_t i = 0; i != AiHelpers.ExperienceUpgrades[Type->Slot].size(); ++i) {
@@ -639,7 +645,9 @@ void CUnit::IncreaseLevel(int level_quantity)
 				}
 				if (potential_upgrades.size() > 0) {
 					this->Variable[LEVELUP_INDEX].Value -= 1;
+					this->Variable[LEVELUP_INDEX].Max = this->Variable[LEVELUP_INDEX].Value;
 					TransformUnitIntoType(*this, *potential_upgrades[SyncRand(potential_upgrades.size())]);
+					upgrade_found = true;
 				}
 			}
 			
@@ -647,12 +655,13 @@ void CUnit::IncreaseLevel(int level_quantity)
 				if (((int) AiHelpers.LearnableAbilities.size()) > Type->Slot) {
 					std::vector<CUpgrade *> potential_abilities;
 					for (size_t i = 0; i != AiHelpers.LearnableAbilities[Type->Slot].size(); ++i) {
-						if (!CanLearnAbility(AiHelpers.LearnableAbilities[Type->Slot][i])) {
+						if (CanLearnAbility(AiHelpers.LearnableAbilities[Type->Slot][i])) {
 							potential_abilities.push_back(AiHelpers.LearnableAbilities[Type->Slot][i]);
 						}
 					}
 					if (potential_abilities.size() > 0) {
 						AbilityAcquire(*this, potential_abilities[SyncRand(potential_abilities.size())]);
+						upgrade_found = true;
 					}
 				}
 			}
@@ -683,6 +692,7 @@ void CUnit::Retrain()
 			for (size_t j = 0; j != AiHelpers.ExperienceUpgrades[i].size(); ++j) {
 				if (AiHelpers.ExperienceUpgrades[i][j] == this->Type) {
 					this->Variable[LEVELUP_INDEX].Value += 1;
+					this->Variable[LEVELUP_INDEX].Max = this->Variable[LEVELUP_INDEX].Value;
 					TransformUnitIntoType(*this, *UnitTypes[i]);
 					if (!IsNetworkGame() && Character != NULL && Character->Persistent && Player->AiEnabled == false) {	//save the unit-type experience upgrade for persistent characters
 						if (Character->Type->Slot != i) {
@@ -776,6 +786,7 @@ void CUnit::SetCharacter(std::string character_full_name, bool custom_hero)
 		TraitAcquire(*this, this->Character->Trait);
 	}
 	
+	this->Variable[LEVEL_INDEX].Value = this->Type->Stats[this->Player->Index].Variables[LEVEL_INDEX].Value;
 	if (this->Variable[LEVEL_INDEX].Value < this->Character->Level) {
 		this->IncreaseLevel(this->Character->Level - this->Variable[LEVEL_INDEX].Value);
 	}
@@ -789,6 +800,11 @@ void CUnit::SetCharacter(std::string character_full_name, bool custom_hero)
 		AbilityAcquire(*this, this->Character->Abilities[i]);
 	}
 	
+	//load read works
+	for (size_t i = 0; i < this->Character->ReadWorks.size(); ++i) {
+		ReadWork(this->Character->ReadWorks[i], false);
+	}
+	
 	//load items
 	for (size_t i = 0; i < this->Character->Items.size(); ++i) {
 		CUnit *item = MakeUnitAndPlace(this->tilePos, *this->Character->Items[i]->Type, &Players[PlayerNumNeutral]);
@@ -800,6 +816,9 @@ void CUnit::SetCharacter(std::string character_full_name, bool custom_hero)
 		}
 		if (this->Character->Items[i]->Spell != NULL) {
 			item->SetSpell(this->Character->Items[i]->Spell);
+		}
+		if (this->Character->Items[i]->Work != NULL) {
+			item->SetWork(this->Character->Items[i]->Work);
 		}
 		item->Unique = this->Character->Items[i]->Unique;
 		if (!this->Character->Items[i]->Name.empty()) {
@@ -1149,6 +1168,18 @@ void CUnit::DeequipItem(CUnit &item, bool affect_character)
 	}
 }
 
+void CUnit::ReadWork(CUpgrade *work, bool affect_character)
+{
+	IndividualUpgradeAcquire(*this, work);
+	
+	if (!IsNetworkGame() && Character && Character->Persistent && this->Player->AiEnabled == false && affect_character) {
+		if (std::find(Character->ReadWorks.begin(), Character->ReadWorks.end(), work) == Character->ReadWorks.end()) {
+			Character->ReadWorks.push_back(work);
+			SaveHero(Character);
+		}
+	}
+}
+
 void CUnit::SetPrefix(CUpgrade *prefix)
 {
 	if (Prefix != NULL) {
@@ -1173,7 +1204,11 @@ void CUnit::SetPrefix(CUpgrade *prefix)
 	if (Prefix != NULL) {
 		Name += Prefix->Name + " ";
 	}
-	Name += GetTypeName();
+	if (Work != NULL) {
+		Name += Work->Name;
+	} else {
+		Name += GetTypeName();
+	}
 	if (Suffix != NULL) {
 		Name += " " + Suffix->Name;
 	} else if (Spell != NULL) {
@@ -1205,7 +1240,11 @@ void CUnit::SetSuffix(CUpgrade *suffix)
 	if (Prefix != NULL) {
 		Name += Prefix->Name + " ";
 	}
-	Name += GetTypeName();
+	if (Work != NULL) {
+		Name += Work->Name;
+	} else {
+		Name += GetTypeName();
+	}
 	if (Suffix != NULL) {
 		Name += " " + Suffix->Name;
 	} else if (Spell != NULL) {
@@ -1225,7 +1264,35 @@ void CUnit::SetSpell(SpellType *spell)
 	if (Prefix != NULL) {
 		Name += Prefix->Name + " ";
 	}
-	Name += GetTypeName();
+	if (Work != NULL) {
+		Name += Work->Name;
+	} else {
+		Name += GetTypeName();
+	}
+	if (Suffix != NULL) {
+		Name += " " + Suffix->Name;
+	} else if (Spell != NULL) {
+		Name += " of " + Spell->Name;
+	}
+}
+
+void CUnit::SetWork(CUpgrade *work)
+{
+	if (!IsNetworkGame() && Container && Container->Character && Container->Character->Persistent && Container->Player->AiEnabled == false && Container->Character->GetItem(*this) != NULL && Container->Character->GetItem(*this)->Work != work) { //update the persistent item, if applicable and if it hasn't been updated yet
+		Container->Character->GetItem(*this)->Work = const_cast<CUpgrade *>(&(*work));
+		SaveHero(Container->Character);
+	}
+	Work = const_cast<CUpgrade *>(&(*work));
+	
+	Name = "";
+	if (Prefix != NULL) {
+		Name += Prefix->Name + " ";
+	}
+	if (Work != NULL) {
+		Name += Work->Name;
+	} else {
+		Name += GetTypeName();
+	}
 	if (Suffix != NULL) {
 		Name += " " + Suffix->Name;
 	} else if (Spell != NULL) {
@@ -1238,6 +1305,7 @@ void CUnit::SetUnique(CUniqueItem *unique)
 	SetPrefix(unique->Prefix);
 	SetSuffix(unique->Suffix);
 	SetSpell(unique->Spell);
+	SetWork(unique->Work);
 	if (unique->ResourcesHeld != 0) {
 		this->ResourcesHeld = unique->ResourcesHeld;
 		this->Variable[GIVERESOURCE_INDEX].Value = unique->ResourcesHeld;
@@ -1284,8 +1352,12 @@ void CUnit::GenerateDrop()
 		if (droppedUnit != NULL) {
 			droppedUnit->GenerateSpecialProperties(this);
 			
-			if (droppedUnit->Type->BoolFlag[ITEM_INDEX].value && droppedUnit->Prefix == NULL && droppedUnit->Suffix == NULL && !droppedUnit->Unique) { //save the initial cycle items were placed in the ground to destroy them if they have been there for too long
-				droppedUnit->TTL = GameCycle + (5 * 60 * CYCLES_PER_SECOND);
+			if (droppedUnit->Type->BoolFlag[ITEM_INDEX].value && !droppedUnit->Unique) { //save the initial cycle items were placed in the ground to destroy them if they have been there for too long
+				int ttl_cycles = (5 * 60 * CYCLES_PER_SECOND);
+				if (droppedUnit->Prefix != NULL || droppedUnit->Suffix != NULL || droppedUnit->Spell != NULL || droppedUnit->Work != NULL) {
+					ttl_cycles *= 4;
+				}
+				droppedUnit->TTL = GameCycle + ttl_cycles;
 			}
 		}
 	}
@@ -1317,13 +1389,26 @@ void CUnit::GenerateSpecialProperties(CUnit *dropper)
 	}
 
 	if (SyncRand(100) >= (100 - magic_affix_chance)) {
+		this->GenerateWork(dropper);
+	}
+	if (SyncRand(100) >= (100 - magic_affix_chance)) {
 		this->GeneratePrefix(dropper);
 	}
 	if (SyncRand(100) >= (100 - magic_affix_chance)) {
 		this->GenerateSuffix(dropper);
 	}
+	if (this->Prefix == NULL && this->Suffix == NULL && this->Work == NULL && SyncRand(100) >= (100 - magic_affix_chance)) {
+		this->GenerateSpell(dropper);
+	}
 	if (SyncRand(1000) >= (1000 - unique_chance)) {
 		this->GenerateUnique(dropper);
+	}
+	
+	if (
+		this->Prefix == NULL && this->Suffix == NULL && this->Spell == NULL && this->Work == NULL
+		&& (this->Type->ItemClass == ScrollItemClass || this->Type->ItemClass == RingItemClass || this->Type->ItemClass == AmuletItemClass)
+	) { //scrolls and jewelry must always have a property
+		this->GenerateSpecialProperties(dropper);
 	}
 }
 			
@@ -1373,6 +1458,43 @@ void CUnit::GenerateSuffix(CUnit *dropper)
 	}
 }
 
+void CUnit::GenerateSpell(CUnit *dropper)
+{
+	std::vector<SpellType *> potential_spells;
+	if (dropper != NULL) {
+		for (size_t i = 0; i < dropper->Type->DropSpells.size(); ++i) {
+			if (this->Type->ItemClass != -1 && dropper->Type->DropSpells[i]->ItemSpell[Type->ItemClass]) {
+				potential_spells.push_back(dropper->Type->DropSpells[i]);
+			}
+		}
+	}
+	
+	if (potential_spells.size() > 0) {
+		SetSpell(potential_spells[SyncRand(potential_spells.size())]);
+	}
+}
+
+void CUnit::GenerateWork(CUnit *dropper)
+{
+	std::vector<CUpgrade *> potential_works;
+	for (size_t i = 0; i < this->Type->Affixes.size(); ++i) {
+		if (this->Type->ItemClass != -1 && this->Type->Affixes[i]->Work == this->Type->ItemClass) {
+			potential_works.push_back(this->Type->Affixes[i]);
+		}
+	}
+	if (dropper != NULL) {
+		for (size_t i = 0; i < dropper->Type->DropAffixes.size(); ++i) {
+			if (this->Type->ItemClass != -1 && dropper->Type->DropAffixes[i]->Work == this->Type->ItemClass) {
+				potential_works.push_back(dropper->Type->DropAffixes[i]);
+			}
+		}
+	}
+	
+	if (potential_works.size() > 0) {
+		SetWork(potential_works[SyncRand(potential_works.size())]);
+	}
+}
+
 void CUnit::GenerateUnique(CUnit *dropper)
 {
 	std::vector<CUniqueItem *> potential_uniques;
@@ -1388,6 +1510,15 @@ void CUnit::GenerateUnique(CUnit *dropper)
 				UniqueItems[i]->Suffix == NULL
 				|| (dropper != NULL && std::find(dropper->Type->DropAffixes.begin(), dropper->Type->DropAffixes.end(), UniqueItems[i]->Suffix) != dropper->Type->DropAffixes.end())
 				|| std::find(this->Type->Affixes.begin(), this->Type->Affixes.end(), UniqueItems[i]->Suffix) != this->Type->Affixes.end()
+			)
+			&& ( //the dropper unit must be capable of generating this unique item's spell to drop the item
+				UniqueItems[i]->Spell == NULL
+				|| (dropper != NULL && std::find(dropper->Type->DropSpells.begin(), dropper->Type->DropSpells.end(), UniqueItems[i]->Spell) != dropper->Type->DropSpells.end())
+			)
+			&& ( //the dropper unit must be capable of generating this unique item's work to drop the item, or else the unit must be capable of generating it on its own
+				UniqueItems[i]->Work == NULL
+				|| (dropper != NULL && std::find(dropper->Type->DropAffixes.begin(), dropper->Type->DropAffixes.end(), UniqueItems[i]->Work) != dropper->Type->DropAffixes.end())
+				|| std::find(this->Type->Affixes.begin(), this->Type->Affixes.end(), UniqueItems[i]->Work) != this->Type->Affixes.end()
 			)
 			&& UniqueItems[i]->CanDrop()
 		) {
@@ -1469,11 +1600,6 @@ void CUnit::Init(const CUnitType &type)
 	memset(IndividualUpgrades, 0, sizeof(IndividualUpgrades));
 	//Wyrmgus start
 	memset(UnitStockReplenishmentTimers, 0, sizeof(UnitStockReplenishmentTimers));
-	//Wyrmgus end
-
-	//Wyrmgus start
-	//set the unit's personal name, if applicable
-	Name = GeneratePersonalName(PlayerRaces.GetRaceIndexByName(Type->Civilization.c_str()), Type->Slot);
 	//Wyrmgus end
 
 	// Set a heading for the unit if it Handles Directions
@@ -1620,11 +1746,17 @@ void CUnit::AssignToPlayer(CPlayer &player)
 			memcpy(Variable, Stats->Variables, UnitTypeVar.GetNumberVariable() * sizeof(*Variable));
 		}
 		//Wyrmgus start
-		for (size_t i = 0; i < UnitTypes.size(); ++i) {
-			UnitStock[i] = Stats->UnitStock[i];
-		}
+		memset(UnitStock, 0, sizeof(UnitStock));
 		//Wyrmgus end
 	}
+	
+	//Wyrmgus start
+	//generate a personal name for the unit, if applicable
+	if (this->Character == NULL) {
+		this->UpdatePersonalName();
+	}
+	//Wyrmgus end
+
 }
 
 /**
@@ -2019,6 +2151,29 @@ void CUnit::UpdateXPRequired()
 	this->Variable[XPREQUIRED_INDEX].Max = this->Variable[XPREQUIRED_INDEX].Value;
 	this->Variable[XPREQUIRED_INDEX].Enable = 1;
 	this->Variable[XP_INDEX].Enable = 1;
+}
+
+void CUnit::UpdatePersonalName()
+{
+	if (this->Character != NULL) {
+		return;
+	}
+	
+	int civilization = PlayerRaces.GetRaceIndexByName(this->Type->Civilization.c_str());
+	int language = PlayerRaces.GetCivilizationLanguage(civilization);
+	if (civilization != -1 && !this->Type->Faction.empty()) {
+		language = PlayerRaces.GetFactionLanguage(civilization, PlayerRaces.GetFactionIndexByName(civilization, this->Type->Faction));
+	} else if (civilization != -1 && this->Player->Race == civilization && this->Player->Faction != -1) {
+		language = PlayerRaces.GetFactionLanguage(civilization, this->Player->Faction);
+	}
+
+	// first see if can translate the current personal name
+	std::string new_personal_name = PlayerRaces.TranslateName(this->Name, language);
+	if (!new_personal_name.empty()) {
+		this->Name = new_personal_name;
+	} else {
+		this->Name = GeneratePersonalName(language, this->Type->Slot);
+	}
 }
 
 void CUnit::XPChanged()
@@ -3391,8 +3546,12 @@ void DropOutAll(const CUnit &source)
 	}
 	
 	//Wyrmgus start
-	if (unit->Type->BoolFlag[ITEM_INDEX].value && unit->Prefix == NULL && unit->Suffix == NULL && !unit->Unique) { //save the initial cycle items were placed in the ground to destroy them if they have been there for too long
-		unit->TTL = GameCycle + (5 * 60 * CYCLES_PER_SECOND);
+	if (unit->Type->BoolFlag[ITEM_INDEX].value && !unit->Unique) { //save the initial cycle items were placed in the ground to destroy them if they have been there for too long
+		int ttl_cycles = (5 * 60 * CYCLES_PER_SECOND);
+		if (unit->Prefix != NULL || unit->Suffix != NULL || unit->Spell != NULL || unit->Work != NULL) {
+			ttl_cycles *= 4;
+		}
+		unit->TTL = GameCycle + ttl_cycles;
 	}
 	//Wyrmgus end
 }
@@ -3582,52 +3741,76 @@ int CUnit::GetCurrentWeaponClass() const
 	return Type->WeaponClasses[0];
 }
 
-int CUnit::GetEquipmentVariableChange(const CUnit *item, int variable_index, bool increase) const
+int CUnit::GetItemVariableChange(const CUnit *item, int variable_index, bool increase) const
 {
+	if (item->Type->ItemClass == -1) {
+		return 0;
+	}
+	
 	int item_slot = GetItemClassSlot(item->Type->ItemClass);
-	if (item->Type->ItemClass == -1 || item_slot == -1 || this->GetItemSlotQuantity(item_slot) == 0) {
+	if (item->Work == NULL && (item_slot == -1 || this->GetItemSlotQuantity(item_slot) == 0)) {
 		return 0;
 	}
 	
 	int value = 0;
-	if (!increase) {
-		value = item->Variable[variable_index].Value;
-	} else {
-		value = item->Variable[variable_index].Increase;
-	}
-	
-	if (EquippedItems[item_slot].size() == this->GetItemSlotQuantity(item_slot)) {
-		if (!increase) {
-			value -= EquippedItems[item_slot][EquippedItems[item_slot].size() - 1]->Variable[variable_index].Value;
-		} else {
-			value -= EquippedItems[item_slot][EquippedItems[item_slot].size() - 1]->Variable[variable_index].Increase;
-		}
-	} else if (EquippedItems[item_slot].size() == 0 && (item_slot == WeaponItemSlot || item_slot == ShieldItemSlot || item_slot == BootsItemSlot || item_slot == ArrowsItemSlot)) {
-		for (int z = 0; z < NumUpgradeModifiers; ++z) {
-			if (
-				(
-					(
-						(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Weapon && item_slot == WeaponItemSlot)
-						|| (AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Shield && item_slot == ShieldItemSlot)
-						|| (AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Boots && item_slot == BootsItemSlot)
-						|| (AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Arrows && item_slot == ArrowsItemSlot)
-					)
-					&& Player->Allow.Upgrades[UpgradeModifiers[z]->UpgradeId] == 'R' && UpgradeModifiers[z]->ApplyTo[Type->Slot] == 'X'
-				)
-				|| (item_slot == WeaponItemSlot && AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Ability && this->IndividualUpgrades[UpgradeModifiers[z]->UpgradeId] && AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.size() > 0 && std::find(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.begin(), AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end(), this->GetCurrentWeaponClass()) != AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end() && std::find(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.begin(), AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end(), item->Type->ItemClass) == AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end())
-			) {
-				if (!increase) {
-					value -= UpgradeModifiers[z]->Modifier.Variables[variable_index].Value;
-				} else {
-					value -= UpgradeModifiers[z]->Modifier.Variables[variable_index].Increase;
+	if (item->Work != NULL) {
+		if (this->IndividualUpgrades[item->Work->ID] == false) {
+			for (int z = 0; z < NumUpgradeModifiers; ++z) {
+				if (UpgradeModifiers[z]->UpgradeId == item->Work->ID) {
+					if (!increase) {
+						value += UpgradeModifiers[z]->Modifier.Variables[variable_index].Value;
+					} else {
+						value += UpgradeModifiers[z]->Modifier.Variables[variable_index].Increase;
+					}
 				}
-			} else if (
-				AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Ability && this->IndividualUpgrades[UpgradeModifiers[z]->UpgradeId] && AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.size() > 0 && std::find(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.begin(), AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end(), this->GetCurrentWeaponClass()) == AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end() && std::find(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.begin(), AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end(), item->Type->ItemClass) != AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end()
-			) {
-				if (!increase) {
-					value += UpgradeModifiers[z]->Modifier.Variables[variable_index].Value;
-				} else {
-					value += UpgradeModifiers[z]->Modifier.Variables[variable_index].Increase;
+			}
+		}
+	} else {
+		if (!increase) {
+			value = item->Variable[variable_index].Value;
+		} else {
+			value = item->Variable[variable_index].Increase;
+		}
+		
+		if (EquippedItems[item_slot].size() == this->GetItemSlotQuantity(item_slot)) {
+			int item_slot_used = EquippedItems[item_slot].size() - 1;
+			for (size_t i = 0; i < EquippedItems[item_slot].size(); ++i) {
+				if (EquippedItems[item_slot][i] == item) {
+					item_slot_used = i;
+				}
+			}
+			if (!increase) {
+				value -= EquippedItems[item_slot][item_slot_used]->Variable[variable_index].Value;
+			} else {
+				value -= EquippedItems[item_slot][item_slot_used]->Variable[variable_index].Increase;
+			}
+		} else if (EquippedItems[item_slot].size() == 0 && (item_slot == WeaponItemSlot || item_slot == ShieldItemSlot || item_slot == BootsItemSlot || item_slot == ArrowsItemSlot)) {
+			for (int z = 0; z < NumUpgradeModifiers; ++z) {
+				if (
+					(
+						(
+							(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Weapon && item_slot == WeaponItemSlot)
+							|| (AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Shield && item_slot == ShieldItemSlot)
+							|| (AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Boots && item_slot == BootsItemSlot)
+							|| (AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Arrows && item_slot == ArrowsItemSlot)
+						)
+						&& Player->Allow.Upgrades[UpgradeModifiers[z]->UpgradeId] == 'R' && UpgradeModifiers[z]->ApplyTo[Type->Slot] == 'X'
+					)
+					|| (item_slot == WeaponItemSlot && AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Ability && this->IndividualUpgrades[UpgradeModifiers[z]->UpgradeId] && AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.size() > 0 && std::find(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.begin(), AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end(), this->GetCurrentWeaponClass()) != AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end() && std::find(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.begin(), AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end(), item->Type->ItemClass) == AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end())
+				) {
+					if (!increase) {
+						value -= UpgradeModifiers[z]->Modifier.Variables[variable_index].Value;
+					} else {
+						value -= UpgradeModifiers[z]->Modifier.Variables[variable_index].Increase;
+					}
+				} else if (
+					AllUpgrades[UpgradeModifiers[z]->UpgradeId]->Ability && this->IndividualUpgrades[UpgradeModifiers[z]->UpgradeId] && AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.size() > 0 && std::find(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.begin(), AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end(), this->GetCurrentWeaponClass()) == AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end() && std::find(AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.begin(), AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end(), item->Type->ItemClass) != AllUpgrades[UpgradeModifiers[z]->UpgradeId]->WeaponClasses.end()
+				) {
+					if (!increase) {
+						value += UpgradeModifiers[z]->Modifier.Variables[variable_index].Value;
+					} else {
+						value += UpgradeModifiers[z]->Modifier.Variables[variable_index].Increase;
+					}
 				}
 			}
 		}
@@ -3713,6 +3896,31 @@ bool CUnit::CanEquipItemClass(int item_class) const
 	}
 	
 	if (this->GetItemSlotQuantity(GetItemClassSlot(item_class)) == 0) {
+		return false;
+	}
+	
+	return true;
+}
+
+bool CUnit::CanUseItem(CUnit *item) const
+{
+	if (!item->Type->BoolFlag[ITEM_INDEX].value && !item->Type->BoolFlag[POWERUP_INDEX].value) {
+		return false;
+	}
+	
+	if (item->Spell != NULL) {
+		if (!this->HasInventory() || !CanCastSpell(*this, *item->Spell, this, this->tilePos)) {
+			return false;
+		}
+	}
+	
+	if (item->Work != NULL) {
+		if (!this->HasInventory() || this->IndividualUpgrades[item->Work->ID]) {
+			return false;
+		}
+	}
+	
+	if (item->Variable[HITPOINTHEALING_INDEX].Value > 0 && this->Variable[HP_INDEX].Value >= this->Variable[HP_INDEX].Max) {
 		return false;
 	}
 	
@@ -3827,7 +4035,7 @@ std::string CUnit::GetMessageName() const
 		return GetTypeName();
 	}
 	
-	if (!this->Unique && (this->Prefix != NULL || this->Suffix != NULL || this->Spell != NULL)) {
+	if (!this->Unique && this->Work == NULL && (this->Prefix != NULL || this->Suffix != NULL || this->Spell != NULL)) {
 		return Name;
 	}
 	
@@ -3983,6 +4191,13 @@ void LetUnitDie(CUnit &unit, bool suicide)
 		// Recalculate the seen count.
 		//UnitCountSeen(unit);
 	}
+	
+	//Wyrmgus start
+	if (unit.Variable[LEVELUP_INDEX].Value > 0) {
+		unit.Player->UpdateLevelUpUnits(); //recalculate level-up units, since this unit no longer should be in that vector
+	}
+	//Wyrmgus end
+	
 	MapMarkUnitSight(unit);
 }
 
@@ -4134,6 +4349,7 @@ static void HitUnit_IncreaseScoreForKill(CUnit &attacker, CUnit &target)
 		attacker.Player->TotalKills++;
 	}
 	//Wyrmgus start
+	attacker.Player->UnitTypeKills[target.Type->Slot]++;
 	/*
 	if (UseHPForXp) {
 		attacker.Variable[XP_INDEX].Max += target.Variable[HP_INDEX].Value;

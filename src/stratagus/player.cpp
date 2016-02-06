@@ -355,6 +355,62 @@ std::map<std::string, int> FactionStringToIndex[MAX_RACES];
 */
 void PlayerRace::Clean()
 {
+	//Wyrmgus start
+	if (this->Count > 0) { //don't clean the languages if first defining the civilizations
+		for (size_t i = 0; i < this->Languages.size(); ++i) {
+			for (size_t j = 0; j < this->Languages[i]->LanguageNouns.size(); ++j) {
+				delete this->Languages[i]->LanguageNouns[j];
+			}
+			this->Languages[i]->LanguageNouns.clear();
+			
+			for (size_t j = 0; j < this->Languages[i]->LanguageVerbs.size(); ++j) {
+				delete this->Languages[i]->LanguageVerbs[j];
+			}
+			this->Languages[i]->LanguageVerbs.clear();
+			
+			for (size_t j = 0; j < this->Languages[i]->LanguageAdjectives.size(); ++j) {
+				delete this->Languages[i]->LanguageAdjectives[j];
+			}
+			this->Languages[i]->LanguageAdjectives.clear();
+			
+			for (size_t j = 0; j < this->Languages[i]->LanguagePronouns.size(); ++j) {
+				delete this->Languages[i]->LanguagePronouns[j];
+			}
+			this->Languages[i]->LanguagePronouns.clear();
+			
+			for (size_t j = 0; j < this->Languages[i]->LanguageAdverbs.size(); ++j) {
+				delete this->Languages[i]->LanguageAdverbs[j];
+			}
+			this->Languages[i]->LanguageAdverbs.clear();
+			
+			for (size_t j = 0; j < this->Languages[i]->LanguageConjunctions.size(); ++j) {
+				delete this->Languages[i]->LanguageConjunctions[j];
+			}
+			this->Languages[i]->LanguageConjunctions.clear();
+			
+			for (size_t j = 0; j < this->Languages[i]->LanguageAdpositions.size(); ++j) {
+				delete this->Languages[i]->LanguageAdpositions[j];
+			}
+			this->Languages[i]->LanguageAdpositions.clear();
+			
+			for (size_t j = 0; j < this->Languages[i]->LanguageArticles.size(); ++j) {
+				delete this->Languages[i]->LanguageArticles[j];
+			}
+			this->Languages[i]->LanguageArticles.clear();
+			
+			for (size_t j = 0; j < this->Languages[i]->LanguageNumerals.size(); ++j) {
+				delete this->Languages[i]->LanguageNumerals[j];
+			}
+			this->Languages[i]->LanguageNumerals.clear();
+			
+			for (unsigned int j = 0; j < PersonalNameMax; ++j) {
+				for (unsigned int k = 0; k < 2; ++k) {
+					this->Languages[i]->NameTranslations[j][k].clear();
+				}
+			}
+		}
+	}
+	//Wyrmgus end
 	for (unsigned int i = 0; i != this->Count; ++i) {
 		this->Name[i].clear();
 		this->Display[i].clear();
@@ -374,6 +430,7 @@ void PlayerRace::Clean()
 		this->Species[i].clear();
 		this->DefaultColor[i].clear();
 		this->ParentCivilization[i] = -1;
+		this->CivilizationLanguage[i] = -1;
 		for (unsigned int j = 0; j < FactionMax; ++j) {
 			if (this->Factions[i][j]) {
 				delete this->Factions[i][j];
@@ -389,38 +446,12 @@ void PlayerRace::Clean()
 			this->SettlementNames[i][j].clear();
 			this->SettlementNamePrefixes[i][j].clear();
 			this->SettlementNameSuffixes[i][j].clear();
-			for (unsigned int k = 0; k < 2; ++k) {
-				this->NameTranslations[i][j][k].clear();
-			}
 		}
 		//clear deities
 		for (size_t j = 0; j < this->Deities[i].size(); ++j) {
 			delete this->Deities[i][j];
 		}
 		this->Deities[i].clear();
-		for (int j = 0; j < LanguageWordMax; ++j) {
-			if (this->LanguageNouns[i][j]) {
-				delete this->LanguageNouns[i][j];
-			}
-			if (this->LanguageVerbs[i][j]) {
-				delete this->LanguageVerbs[i][j];
-			}
-			if (this->LanguageAdjectives[i][j]) {
-				delete this->LanguageAdjectives[i][j];
-			}
-			if (this->LanguagePronouns[i][j]) {
-				delete this->LanguagePronouns[i][j];
-			}
-			if (this->LanguageAdverbs[i][j]) {
-				delete this->LanguageAdverbs[i][j];
-			}
-			if (this->LanguageConjunctions[i][j]) {
-				delete this->LanguageConjunctions[i][j];
-			}
-			if (this->LanguageNumerals[i][j]) {
-				delete this->LanguageNumerals[i][j];
-			}
-		}
 		//Wyrmgus end
 	}
 	this->Count = 0;
@@ -450,8 +481,18 @@ int PlayerRace::GetRaceIndexByName(const char *raceName) const
 //Wyrmgus start
 int PlayerRace::GetFactionIndexByName(const int civilization, const std::string faction_name) const
 {
-	if (civilization == -1 || faction_name.empty()) {
+	if (faction_name.empty()) {
 		return -1;
+	}
+	
+	if (civilization == -1) { //if the civilization is -1, then search all civilizations for this faction
+		for (int i = 0; i < MAX_RACES; ++i) {
+			int civilization_faction_index = PlayerRaces.GetFactionIndexByName(i, faction_name);
+			if (civilization_faction_index != -1) {
+				return civilization_faction_index;
+			}
+		}
+		return -1; //return -1 if found nothing
 	}
 	
 	if (FactionStringToIndex[civilization].find(faction_name) != FactionStringToIndex[civilization].end()) {
@@ -471,6 +512,16 @@ int PlayerRace::GetDeityIndexByName(const int civilization, std::string deity_na
 	return -1;
 }
 
+int PlayerRace::GetLanguageIndexByIdent(std::string language_ident) const
+{
+	for (size_t i = 0; i < this->Languages.size(); ++i) {
+		if (language_ident == this->Languages[i]->Ident) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 int PlayerRace::GetCivilizationClassUnitType(int civilization, int class_id)
 {
 	if (civilization == -1 || class_id == -1) {
@@ -482,10 +533,7 @@ int PlayerRace::GetCivilizationClassUnitType(int civilization, int class_id)
 	}
 	
 	if (PlayerRaces.ParentCivilization[civilization] != -1) {
-		int parent_civilization = PlayerRaces.ParentCivilization[civilization];
-		if (parent_civilization != -1) {
-			return GetCivilizationClassUnitType(parent_civilization, class_id);
-		}
+		return GetCivilizationClassUnitType(PlayerRaces.ParentCivilization[civilization], class_id);
 	}
 	
 	return -1;
@@ -502,10 +550,7 @@ int PlayerRace::GetCivilizationClassUpgrade(int civilization, int class_id)
 	}
 	
 	if (PlayerRaces.ParentCivilization[civilization] != -1) {
-		int parent_civilization = PlayerRaces.ParentCivilization[civilization];
-		if (parent_civilization != -1) {
-			return GetCivilizationClassUpgrade(parent_civilization, class_id);
-		}
+		return GetCivilizationClassUpgrade(PlayerRaces.ParentCivilization[civilization], class_id);
 	}
 	
 	return -1;
@@ -549,101 +594,59 @@ int PlayerRace::GetFactionClassUpgrade(int civilization, int faction, int class_
 	return GetCivilizationClassUpgrade(civilization, class_id);
 }
 
-bool PlayerRace::RequiresPlural(std::string word, int civilization) const
+int PlayerRace::GetCivilizationLanguage(int civilization)
 {
-	for (int i = 0; i < LanguageWordMax; ++i) {
-		if (!PlayerRaces.LanguageNumerals[civilization][i]) { //we only need to check numerals, as other sorts of words don't require plural
-			break;
-		}
-		if (!PlayerRaces.LanguageNumerals[civilization][i]->Word.empty() && PlayerRaces.LanguageNumerals[civilization][i]->Word == word) {
-			if (PlayerRaces.LanguageNumerals[civilization][i]->Number > 1) {
-				return true;
-			} else {
-				return false;
-			}
-		}
+	if (civilization == -1) {
+		return -1;
 	}
-	return false;
+	
+	if (CivilizationLanguage[civilization] != -1) {
+		return CivilizationLanguage[civilization];
+	}
+	
+	if (PlayerRaces.ParentCivilization[civilization] != -1) {
+		return GetCivilizationLanguage(PlayerRaces.ParentCivilization[civilization]);
+	}
+	
+	return -1;
 }
 
-std::string PlayerRace::GetPluralForm(std::string word, int civilization) const
+int PlayerRace::GetFactionLanguage(int civilization, int faction)
 {
-	Assert(!word.empty());
-	if (word.empty()) { //why is an empty word being used as an argument?
-		return word;
+	if (civilization == -1) {
+		return -1;
 	}
 	
-	for (int i = 0; i < LanguageWordMax; ++i) {
-		if (!PlayerRaces.LanguageNouns[civilization][i]) {
-			break;
+	if (faction != -1) {
+		if (Factions[civilization][faction]->Language != -1) {
+			return Factions[civilization][faction]->Language;
 		}
-		if (PlayerRaces.LanguageNouns[civilization][i]->SingularNominative == word && !PlayerRaces.LanguageNouns[civilization][i]->PluralNominative.empty()) {
-			return PlayerRaces.LanguageNouns[civilization][i]->PluralNominative;
-		} else if (PlayerRaces.LanguageNouns[civilization][i]->SingularAccusative == word && !PlayerRaces.LanguageNouns[civilization][i]->PluralAccusative.empty()) {
-			return PlayerRaces.LanguageNouns[civilization][i]->PluralAccusative;
-		} else if (PlayerRaces.LanguageNouns[civilization][i]->SingularDative == word && !PlayerRaces.LanguageNouns[civilization][i]->PluralDative.empty()) {
-			return PlayerRaces.LanguageNouns[civilization][i]->PluralDative;
-		} else if (PlayerRaces.LanguageNouns[civilization][i]->SingularGenitive == word && !PlayerRaces.LanguageNouns[civilization][i]->PluralGenitive.empty()) {
-			return PlayerRaces.LanguageNouns[civilization][i]->PluralGenitive;
-		// check if the word isn't already a plural one, and if so, just return it back
-		} else if (PlayerRaces.LanguageNouns[civilization][i]->PluralNominative == word) {
-			return word;
-		} else if (PlayerRaces.LanguageNouns[civilization][i]->PluralAccusative == word) {
-			return word;
-		} else if (PlayerRaces.LanguageNouns[civilization][i]->PluralDative == word) {
-			return word;
-		} else if (PlayerRaces.LanguageNouns[civilization][i]->PluralGenitive == word) {
-			return word;
+		
+		if (PlayerRaces.Factions[civilization][faction]->ParentFaction != -1) {
+			return GetFactionLanguage(civilization, PlayerRaces.Factions[civilization][faction]->ParentFaction);
 		}
 	}
 	
-	for (int i = 0; i < LanguageWordMax; ++i) {
-		if (!PlayerRaces.LanguageVerbs[civilization][i]) {
-			break;
-		}
-		// if is a participle, just return the word back
-		if (PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePresent == word) {
-			return word;
-		} else if (PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePast == word) {
-			return word;
-		}
-	}
-	
-	for (int i = 0; i < LanguageWordMax; ++i) {
-		if (!PlayerRaces.LanguageAdjectives[civilization][i]) {
-			break;
-		}
-		// if is an adjective, just return the word back
-		if (PlayerRaces.LanguageAdjectives[civilization][i]->Word == word) {
-			return word;
-		}
-	}
-	
-	for (int i = 0; i < LanguageWordMax; ++i) {
-		if (!PlayerRaces.LanguageNumerals[civilization][i]) {
-			break;
-		}
-		if (PlayerRaces.LanguageNumerals[civilization][i]->Word == word) {
-			return word; // for numerals, just return the original word
-		}
-	}
-	
-	return word;
+	return GetCivilizationLanguage(civilization);
 }
 
 /**
 **  "Translate" (that is, adapt) a proper name from one culture (civilization) to another.
 */
-std::string PlayerRace::TranslateName(std::string name, int civilization)
+std::string PlayerRace::TranslateName(std::string name, int language)
 {
 	std::string new_name;
+	
+	if (language == -1) {
+		return new_name;
+	}
 
 	// try to translate the entire name, as a particular translation for it may exist
-	if (!PlayerRaces.NameTranslations[civilization][0][0].empty()) {
+	if (!PlayerRaces.Languages[language]->NameTranslations[0][0].empty()) {
 		for (int i = 0; i < PersonalNameMax; ++i) {
-			std::string name_to_be_translated = TransliterateText(PlayerRaces.NameTranslations[civilization][i][0]);
-			if (!PlayerRaces.NameTranslations[civilization][i][0].empty() && name_to_be_translated == name) {
-				std::string name_translation = TransliterateText(PlayerRaces.NameTranslations[civilization][i][1]);
+			std::string name_to_be_translated = TransliterateText(PlayerRaces.Languages[language]->NameTranslations[i][0]);
+			if (!PlayerRaces.Languages[language]->NameTranslations[i][0].empty() && name_to_be_translated == name) {
+				std::string name_translation = TransliterateText(PlayerRaces.Languages[language]->NameTranslations[i][1]);
 				new_name = name_translation;
 				return new_name;
 			}
@@ -651,16 +654,16 @@ std::string PlayerRace::TranslateName(std::string name, int civilization)
 	}
 	
 	//if adapting the entire name failed, try to match prefixes and suffixes
-	if (!PlayerRaces.NameTranslations[civilization][0][0].empty()) {
+	if (!PlayerRaces.Languages[language]->NameTranslations[0][0].empty()) {
 		for (int i = 0; i < PersonalNameMax; ++i) {
-			std::string prefix_to_be_translated = TransliterateText(PlayerRaces.NameTranslations[civilization][i][0]);
+			std::string prefix_to_be_translated = TransliterateText(PlayerRaces.Languages[language]->NameTranslations[i][0]);
 			if (!prefix_to_be_translated.empty() && prefix_to_be_translated == name.substr(0, prefix_to_be_translated.size())) {
 				for (int j = 0; j < PersonalNameMax; ++j) {
-					std::string suffix_to_be_translated = TransliterateText(PlayerRaces.NameTranslations[civilization][j][0]);
+					std::string suffix_to_be_translated = TransliterateText(PlayerRaces.Languages[language]->NameTranslations[j][0]);
 					suffix_to_be_translated[0] = tolower(suffix_to_be_translated[0]);
 					if (!suffix_to_be_translated.empty() && suffix_to_be_translated == name.substr(prefix_to_be_translated.size(), suffix_to_be_translated.size())) {
-						std::string prefix_translation = TransliterateText(PlayerRaces.NameTranslations[civilization][i][1]);
-						std::string suffix_translation = TransliterateText(PlayerRaces.NameTranslations[civilization][j][1]);
+						std::string prefix_translation = TransliterateText(PlayerRaces.Languages[language]->NameTranslations[i][1]);
+						std::string suffix_translation = TransliterateText(PlayerRaces.Languages[language]->NameTranslations[j][1]);
 						suffix_translation[0] = tolower(suffix_translation[0]);
 						if (prefix_translation.substr(prefix_translation.size() - 2, 2) == "gs" && suffix_translation.substr(0, 1) == "g") { //if the last two characters of the prefix are "gs", and the first character of the suffix is "g", then remove the final "s" from the prefix (as in "Königgrätz")
 							prefix_translation = FindAndReplaceStringEnding(prefix_translation, "gs", "g");
@@ -883,6 +886,12 @@ void CPlayer::Save(CFile &file) const
 	file.printf("\n  \"total-razings\", %d,", p.TotalRazings);
 	file.printf("\n  \"total-kills\", %d,", p.TotalKills);
 	//Wyrmgus start
+	for (size_t i = 0; i < UnitTypes.size(); ++i) {
+		if (p.UnitTypeKills[i] != 0) {
+			file.printf("\n  \"unit-type-kills\", \"%s\", %d,", UnitTypes[i]->Ident.c_str(), p.UnitTypeKills[i]);
+		}
+	}
+	//Wyrmgus end
 	if (p.LostTownHallTimer != 0) {
 		file.printf("\n  \"lost-town-hall-timer\", %d,", p.LostTownHallTimer);
 	}
@@ -1140,6 +1149,8 @@ void CPlayer::SetFaction(const std::string faction_name)
 	}
 	
 	int faction = PlayerRaces.GetFactionIndexByName(this->Race, faction_name);
+	int old_language = PlayerRaces.GetFactionLanguage(this->Race, this->Faction);
+	int new_language = PlayerRaces.GetFactionLanguage(this->Race, faction);
 	
 	if (!IsNetworkGame()) { //only set the faction's name as the player's name if this is a single player game
 		this->SetName(faction_name);
@@ -1169,6 +1180,17 @@ void CPlayer::SetFaction(const std::string faction_name)
 	
 		if (!PlayerRaces.Factions[this->Race][this->Faction]->FactionUpgrade.empty()) {
 			UpgradeAcquire(*this, CUpgrade::Get(PlayerRaces.Factions[this->Race][this->Faction]->FactionUpgrade));
+		}
+	} else {
+		fprintf(stderr, "Invalid faction \"%s\" tried to be set for player %d of civilization \"%s\".\n", faction_name.c_str(), this->Index, PlayerRaces.Name[this->Race].c_str());
+	}
+	
+	if (new_language != old_language) { //if the language changed, update the names of this player's units
+		for (int i = 0; i < this->GetUnitCount(); ++i) {
+			CUnit &unit = this->GetUnit(i);
+			if (!unit.Character) {
+				unit.UpdatePersonalName();
+			}
 		}
 	}
 }
@@ -1321,6 +1343,7 @@ void CPlayer::Clear()
 	TotalRazings = 0;
 	TotalKills = 0;
 	//Wyrmgus start
+	memset(UnitTypeKills, 0, sizeof(UnitTypeKills));
 	LostTownHallTimer = 0;
 	//Wyrmgus end
 	Color = 0;
@@ -2175,6 +2198,9 @@ std::string GetFactionEffectsString(std::string civilization_name, std::string f
 								faction_effects_string += "+";
 							}
 							faction_effects_string += std::to_string((long long) variable_difference);
+							if (j == BACKSTAB_INDEX || j == BONUSAGAINSTMOUNTED_INDEX || j == BONUSAGAINSTBUILDINGS_INDEX || j == BONUSAGAINSTAIR_INDEX || j == BONUSAGAINSTGIANTS_INDEX || j == BONUSAGAINSTDRAGONS_INDEX || j == FIRERESISTANCE_INDEX || j == COLDRESISTANCE_INDEX || j == ARCANERESISTANCE_INDEX || j == LIGHTNINGRESISTANCE_INDEX || j == AIRRESISTANCE_INDEX || j == EARTHRESISTANCE_INDEX || j == WATERRESISTANCE_INDEX || j == HACKRESISTANCE_INDEX || j == PIERCERESISTANCE_INDEX || j == BLUNTRESISTANCE_INDEX || j == TIMEEFFICIENCYBONUS_INDEX) {
+								faction_effects_string += "%";
+							}
 							faction_effects_string += " ";
 							
 							std::string variable_name = UnitTypeVar.VariableNameLookup[j];
@@ -2226,6 +2252,9 @@ std::string GetFactionEffectsString(std::string civilization_name, std::string f
 											faction_effects_string += "+";
 										}
 										faction_effects_string += std::to_string((long long) UpgradeModifiers[z]->Modifier.Variables[j].Value);
+										if (j == BACKSTAB_INDEX || j == BONUSAGAINSTMOUNTED_INDEX || j == BONUSAGAINSTBUILDINGS_INDEX || j == BONUSAGAINSTAIR_INDEX || j == BONUSAGAINSTGIANTS_INDEX || j == BONUSAGAINSTDRAGONS_INDEX || j == FIRERESISTANCE_INDEX || j == COLDRESISTANCE_INDEX || j == ARCANERESISTANCE_INDEX || j == LIGHTNINGRESISTANCE_INDEX || j == AIRRESISTANCE_INDEX || j == EARTHRESISTANCE_INDEX || j == WATERRESISTANCE_INDEX || j == HACKRESISTANCE_INDEX || j == PIERCERESISTANCE_INDEX || j == BLUNTRESISTANCE_INDEX || j == TIMEEFFICIENCYBONUS_INDEX) {
+											faction_effects_string += "%";
+										}
 										faction_effects_string += " ";
 											
 										std::string variable_name = UnitTypeVar.VariableNameLookup[j];
@@ -2277,6 +2306,28 @@ int GetGovernmentTypeIdByName(std::string government_type)
 	return -1;
 }
 
+std::string CLanguage::GetArticle(std::string gender, std::string grammatical_case, bool definite)
+{
+	for (size_t i = 0; i < this->LanguageArticles.size(); ++i) {
+		if (this->LanguageArticles[i]->Definite != definite) {
+			continue;
+		}
+		
+		if (gender.empty() || this->LanguageArticles[i]->Gender.empty() || gender == this->LanguageArticles[i]->Gender) {
+			if (grammatical_case == "nominative" && !this->LanguageArticles[i]->Nominative.empty()) {
+				return this->LanguageArticles[i]->Nominative;
+			} else if (grammatical_case == "accusative" && !this->LanguageArticles[i]->Accusative.empty()) {
+				return this->LanguageArticles[i]->Accusative;
+			} else if (grammatical_case == "dative" && !this->LanguageArticles[i]->Dative.empty()) {
+				return this->LanguageArticles[i]->Dative;
+			} else if (grammatical_case == "genitive" && !this->LanguageArticles[i]->Genitive.empty()) {
+				return this->LanguageArticles[i]->Genitive;
+			}
+		}
+	}
+	return "";
+}
+
 bool LanguageWord::HasTypeName(std::string type)
 {
 	return std::find(this->TypeName.begin(), this->TypeName.end(), type) != this->TypeName.end();
@@ -2295,6 +2346,26 @@ bool LanguageWord::HasSuffixTypeName(std::string type)
 bool LanguageWord::HasInfixTypeName(std::string type)
 {
 	return std::find(this->InfixTypeName.begin(), this->InfixTypeName.end(), type) != this->InfixTypeName.end();
+}
+
+bool LanguageWord::HasSeparatePrefixTypeName(std::string type)
+{
+	return std::find(this->SeparatePrefixTypeName.begin(), this->SeparatePrefixTypeName.end(), type) != this->SeparatePrefixTypeName.end();
+}
+
+bool LanguageWord::HasSeparateSuffixTypeName(std::string type)
+{
+	return std::find(this->SeparateSuffixTypeName.begin(), this->SeparateSuffixTypeName.end(), type) != this->SeparateSuffixTypeName.end();
+}
+
+bool LanguageWord::HasSeparateInfixTypeName(std::string type)
+{
+	return std::find(this->SeparateInfixTypeName.begin(), this->SeparateInfixTypeName.end(), type) != this->SeparateInfixTypeName.end();
+}
+
+bool LanguageWord::HasMeaning(std::string meaning)
+{
+	return std::find(this->Meanings.begin(), this->Meanings.end(), meaning) != this->Meanings.end();
 }
 //Wyrmgus end
 

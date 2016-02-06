@@ -159,6 +159,7 @@ public:
 	//Wyrmgus start
 	void UpdateContainerAttackRange();
 	void UpdateXPRequired();
+	void UpdatePersonalName();
 	void XPChanged();
 	//Wyrmgus end
 	/// Change owner of unit
@@ -182,14 +183,18 @@ public:
 	void SetVariation(int new_variation, const CUnitType *new_type = NULL, int image_layer = -1);
 	void EquipItem(CUnit &item, bool affect_character = true);
 	void DeequipItem(CUnit &item, bool affect_character = true);
+	void ReadWork(CUpgrade *work, bool affect_character = true);
 	void SetPrefix(CUpgrade *prefix);
 	void SetSuffix(CUpgrade *suffix);
 	void SetSpell(SpellType *spell);
+	void SetWork(CUpgrade *work);
 	void SetUnique(CUniqueItem *unique);
 	void GenerateDrop();
 	void GenerateSpecialProperties(CUnit *dropper = NULL);
 	void GeneratePrefix(CUnit *dropper);
 	void GenerateSuffix(CUnit *dropper);
+	void GenerateSpell(CUnit *dropper);
+	void GenerateWork(CUnit *dropper);
 	void GenerateUnique(CUnit *dropper);
 	//Wyrmgus end
 	
@@ -341,12 +346,13 @@ public:
 	int GetReactionRange() const;
 	int GetItemSlotQuantity(int item_slot) const;
 	int GetCurrentWeaponClass() const;
-	int GetEquipmentVariableChange(const CUnit *item, int variable_index, bool increase = false) const;
+	int GetItemVariableChange(const CUnit *item, int variable_index, bool increase = false) const;
 	bool CanAttack() const;
 	bool IsItemEquipped(const CUnit *item) const;
 	bool IsItemTypeEquipped(CUnitType *item_type) const;
 	bool CanEquipItem(CUnit *item) const;
 	bool CanEquipItemClass(int item_class) const;
+	bool CanUseItem(CUnit *item) const;
 	bool HasInventory() const;
 	bool CanLearnAbility(CUpgrade *ability) const;
 	CAnimations *GetAnimations() const;
@@ -422,6 +428,7 @@ public:
 	CUpgrade *Prefix;	/// Item unit's prefix
 	CUpgrade *Suffix;	/// Item unit's suffix
 	SpellType *Spell;	/// Item unit's spell
+	CUpgrade *Work;		/// Item unit's literary work
 	bool Unique;		/// Whether the item is unique
 	bool Bound;			/// Whether the item is bound to its owner
 	//Wyrmgus end

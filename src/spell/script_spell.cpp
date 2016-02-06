@@ -52,6 +52,9 @@
 #include "spell/spell_summon.h"
 #include "spell/spell_teleport.h"
 #include "luacallback.h"
+//Wyrmgus start
+#include "player.h" // for making user of PlayerRaces
+//Wyrmgus end
 #include "script_sound.h"
 #include "script.h"
 #include "unittype.h"
@@ -182,6 +185,27 @@ static void CclSpellCondition(lua_State *l, ConditionInfo *condition)
 			lua_rawgeti(l, -1, j + 1);
 			condition->CheckFunc = new LuaCallback(l, -1);
 			lua_pop(l, 1);
+		//Wyrmgus start
+		} else if (!strcmp(value, "thrusting-weapon")) {
+			condition->ThrustingWeapon = Ccl2Condition(l, LuaToString(l, -1, j + 1));
+		} else if (!strcmp(value, "faction-unit")) {
+			condition->FactionUnit = Ccl2Condition(l, LuaToString(l, -1, j + 1));
+		} else if (!strcmp(value, "faction-equivalent")) {
+			value = LuaToString(l, -1, j + 1);
+			int civilization = PlayerRaces.GetRaceIndexByName(value);
+			if (civilization != -1) {
+				++j;
+				value = LuaToString(l, -1, j + 1);
+				int faction = PlayerRaces.GetFactionIndexByName(civilization, value);
+				if (faction != -1) {
+					condition->FactionEquivalent = const_cast<CFaction *>(&(*PlayerRaces.Factions[civilization][faction]));;
+				} else {
+					fprintf(stderr, "Faction %s doesn't exist.\n", value);
+				}
+			} else {
+				fprintf(stderr, "Civilization %s doesn't exist.\n", value);
+			}
+		//Wyrmgus end
 		} else {
 			int index = UnitTypeVar.BoolFlagNameLookup[value];
 			if (index != -1) {
@@ -419,6 +443,13 @@ static int CclDefineSpell(lua_State *l)
 			if (spell->DependencyId == -1) {
 				lua_pushfstring(l, "Bad upgrade name: %s", value);
 			}
+		//Wyrmgus start
+		} else if (!strcmp(value, "item-spell")) {
+			int item_class = GetItemClassIdByName(LuaToString(l, i + 1));
+			if (item_class != -1) {
+				spell->ItemSpell[item_class] = true;
+			}
+		//Wyrmgus end
 		} else {
 			LuaError(l, "Unsupported tag: %s" _C_ value);
 		}

@@ -233,17 +233,8 @@ int TransformUnitIntoType(CUnit &unit, const CUnitType &newtype)
 	
 	//Wyrmgus start
 	//change personal name if new unit type's civilization is different from old unit type's civilization
-	if (
-		(!oldtype.Civilization.empty() && !newtype.Civilization.empty() && oldtype.Civilization != newtype.Civilization)
-		|| (!oldtype.PersonalNames[0].empty() || !oldtype.PersonalNamePrefixes[0].empty()) && (!newtype.PersonalNames[0].empty() || !newtype.PersonalNamePrefixes[0].empty())
-	) {
-		// first see if can translate the current personal name
-		std::string new_personal_name = PlayerRaces.TranslateName(unit.Name, PlayerRaces.GetRaceIndexByName(newtype.Civilization.c_str()));
-		if (!new_personal_name.empty()) {
-			unit.Name = new_personal_name;
-		} else {
-			unit.Name = GeneratePersonalName(PlayerRaces.GetRaceIndexByName(unit.Type->Civilization.c_str()), unit.Type->Slot);
-		}
+	if (unit.Character == NULL && !oldtype.Civilization.empty() && !newtype.Civilization.empty() && oldtype.Civilization != newtype.Civilization) {
+		unit.UpdatePersonalName();
 	}
 	//Wyrmgus end
 

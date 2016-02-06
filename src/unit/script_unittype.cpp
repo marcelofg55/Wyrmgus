@@ -120,6 +120,7 @@ static const char PEOPLEAVERSION_KEY[] = "PeopleAversion";
 static const char MOUNTED_KEY[] = "Mounted";
 static const char DIMINUTIVE_KEY[] = "Diminutive";
 static const char GIANT_KEY[] = "Giant";
+static const char DRAGON_KEY[] = "Dragon";
 static const char DETRITUS_KEY[] = "Detritus";
 static const char FLESH_KEY[] = "Flesh";
 static const char VEGETABLE_KEY[] = "Vegetable";
@@ -219,6 +220,7 @@ static const char BONUSAGAINSTMOUNTED_KEY[] = "BonusAgainstMounted";
 static const char BONUSAGAINSTBUILDINGS_KEY[] = "BonusAgainstBuildings";
 static const char BONUSAGAINSTAIR_KEY[] = "BonusAgainstAir";
 static const char BONUSAGAINSTGIANTS_KEY[] = "BonusAgainstGiants";
+static const char BONUSAGAINSTDRAGONS_KEY[] = "BonusAgainstDragons";
 static const char DAYSIGHTRANGEBONUS_KEY[] = "DaySightRangeBonus";
 static const char NIGHTSIGHTRANGEBONUS_KEY[] = "NightSightRangeBonus";
 static const char TRANSPARENCY_KEY[] = "Transparency";
@@ -226,6 +228,7 @@ static const char GENDER_KEY[] = "Gender";
 static const char BIRTHCYCLE_KEY[] = "BirthCycle";
 static const char HUNGER_KEY[] = "Hunger";
 static const char STUN_KEY[] = "Stun";
+static const char BLEEDING_KEY[] = "Bleeding";
 static const char TIMEEFFICIENCYBONUS_KEY[] = "TimeEfficiencyBonus";
 //Wyrmgus end
 
@@ -251,7 +254,7 @@ CUnitTypeVar::CBoolKeys::CBoolKeys()
 							   SAVECARGO_KEY, NONSOLID_KEY, WALL_KEY, NORANDOMPLACING_KEY, ORGANIC_KEY, SIDEATTACK_KEY, NOFRIENDLYFIRE_KEY,
 							   ITEM_KEY, POWERUP_KEY, INVENTORY_KEY, TRAP_KEY, BRIDGE_KEY,
 							   MERCENARY_KEY,
-							   FAUNA_KEY, PREDATOR_KEY, SLIME_KEY, PEOPLEAVERSION_KEY, MOUNTED_KEY, DIMINUTIVE_KEY, GIANT_KEY,
+							   FAUNA_KEY, PREDATOR_KEY, SLIME_KEY, PEOPLEAVERSION_KEY, MOUNTED_KEY, DIMINUTIVE_KEY, GIANT_KEY, DRAGON_KEY,
 							   DETRITUS_KEY, FLESH_KEY, VEGETABLE_KEY, INSECT_KEY, DAIRY_KEY,
 							   DETRITIVORE_KEY, CARNIVORE_KEY, HERBIVORE_KEY, INSECTIVORE_KEY,
 							   HARVESTFROMOUTSIDE_KEY, OBSTACLE_KEY, AIRUNPASSABLE_KEY, SLOWS_KEY, GRAVEL_KEY,
@@ -292,8 +295,9 @@ CUnitTypeVar::CVariableKeys::CVariableKeys()
 							   STRENGTH_KEY, DEXTERITY_KEY, INTELLIGENCE_KEY,
 							   ACCURACY_KEY, EVASION_KEY, LEVEL_KEY, LEVELUP_KEY, XPREQUIRED_KEY, VARIATION_KEY, HITPOINTHEALING_KEY, HITPOINTBONUS_KEY, CRITICALSTRIKECHANCE_KEY,
 							   BACKSTAB_KEY, BONUSAGAINSTMOUNTED_KEY, BONUSAGAINSTBUILDINGS_KEY, BONUSAGAINSTAIR_KEY, BONUSAGAINSTGIANTS_KEY,
+							   BONUSAGAINSTDRAGONS_KEY,
 							   DAYSIGHTRANGEBONUS_KEY, NIGHTSIGHTRANGEBONUS_KEY, TRANSPARENCY_KEY, GENDER_KEY, BIRTHCYCLE_KEY, HUNGER_KEY,
-							   STUN_KEY, TIMEEFFICIENCYBONUS_KEY
+							   STUN_KEY, BLEEDING_KEY, TIMEEFFICIENCYBONUS_KEY
 //Wyrmgus end
 							  };
 
@@ -658,6 +662,8 @@ static int CclDefineUnitType(lua_State *l)
 			type->NeutralMinimapColorRGB = parent_type->NeutralMinimapColorRGB;
 			type->InvertedEastArms = parent_type->InvertedEastArms;
 			type->InvertedSoutheastArms = parent_type->InvertedSoutheastArms;
+			type->Icon.Name = parent_type->Icon.Name;
+			type->Icon.Icon = NULL;
 			if (parent_type->CanCastSpell) {
 				type->CanCastSpell = new char[SpellTypeTable.size()];
 				memset(type->CanCastSpell, 0, SpellTypeTable.size() * sizeof(char));
@@ -719,6 +725,9 @@ static int CclDefineUnitType(lua_State *l)
 			}
 			for (size_t i = 0; i < parent_type->DropAffixes.size(); ++i) {
 				type->DropAffixes.push_back(parent_type->DropAffixes[i]);
+			}
+			for (size_t i = 0; i < parent_type->DropSpells.size(); ++i) {
+				type->DropSpells.push_back(parent_type->DropSpells[i]);
 			}
 			for (size_t i = 0; i < parent_type->Affixes.size(); ++i) {
 				type->Affixes.push_back(parent_type->Affixes[i]);
@@ -1763,6 +1772,17 @@ static int CclDefineUnitType(lua_State *l)
 					type->DropAffixes.push_back(AllUpgrades[affix_id]);
 				} else {
 					type->DropAffixes.push_back(CUpgrade::New(affix_ident)); //if this affix doesn't exist, define it now (this is useful if the unit type is defined before the upgrade)
+				}
+			}
+		} else if (!strcmp(value, "DropSpells")) {
+			const int args = lua_rawlen(l, -1);
+			for (int j = 0; j < args; ++j) {
+				value = LuaToString(l, -1, j + 1);
+				SpellType *spell = SpellTypeByIdent(value);
+				if (spell != NULL) {
+					type->DropSpells.push_back(spell);
+				} else {
+					LuaError(l, "Spell \"%s\" doesn't exist." _C_ value);
 				}
 			}
 		} else if (!strcmp(value, "Affixes")) {
@@ -2964,8 +2984,8 @@ void UpdateUnitVariables(CUnit &unit)
 			|| i == STRENGTH_INDEX || i == DEXTERITY_INDEX || i == INTELLIGENCE_INDEX
 			|| i == ACCURACY_INDEX || i == EVASION_INDEX
 			|| i == LEVEL_INDEX || i == LEVELUP_INDEX || i == XPREQUIRED_INDEX || i == VARIATION_INDEX || i == HITPOINTHEALING_INDEX || i == HITPOINTBONUS_INDEX || i == CRITICALSTRIKECHANCE_INDEX
-			|| i == BACKSTAB_INDEX || i == BONUSAGAINSTMOUNTED_INDEX || i == BONUSAGAINSTBUILDINGS_INDEX || i == BONUSAGAINSTAIR_INDEX || i == BONUSAGAINSTGIANTS_INDEX
-			|| i == DAYSIGHTRANGEBONUS_INDEX || i == NIGHTSIGHTRANGEBONUS_INDEX || i == TRANSPARENCY_INDEX || i == GENDER_INDEX || i == BIRTHCYCLE_INDEX || i == HUNGER_INDEX || i == STUN_INDEX || i == TIMEEFFICIENCYBONUS_INDEX) {
+			|| i == BACKSTAB_INDEX || i == BONUSAGAINSTMOUNTED_INDEX || i == BONUSAGAINSTBUILDINGS_INDEX || i == BONUSAGAINSTAIR_INDEX || i == BONUSAGAINSTGIANTS_INDEX || i == BONUSAGAINSTDRAGONS_INDEX
+			|| i == DAYSIGHTRANGEBONUS_INDEX || i == NIGHTSIGHTRANGEBONUS_INDEX || i == TRANSPARENCY_INDEX || i == GENDER_INDEX || i == BIRTHCYCLE_INDEX || i == HUNGER_INDEX || i == STUN_INDEX || i == BLEEDING_INDEX || i == TIMEEFFICIENCYBONUS_INDEX) {
 			//Wyrmgus end
 			continue;
 		}
@@ -2979,14 +2999,6 @@ void UpdateUnitVariables(CUnit &unit)
 	unit.Variable[VARIATION_INDEX].Enable = 1;
 	unit.Variable[VARIATION_INDEX].Value = unit.Variation;
 
-	unit.Variable[CRITICALSTRIKECHANCE_INDEX].Max = 100;
-
-	unit.Variable[BACKSTAB_INDEX].Max = 100000;
-	unit.Variable[BONUSAGAINSTMOUNTED_INDEX].Max = 100000;
-	unit.Variable[BONUSAGAINSTBUILDINGS_INDEX].Max = 100000;
-	unit.Variable[BONUSAGAINSTAIR_INDEX].Max = 100000;
-	unit.Variable[BONUSAGAINSTGIANTS_INDEX].Max = 100000;
-
 	unit.Variable[TRANSPARENCY_INDEX].Max = 100;
 
 	unit.Variable[LEVEL_INDEX].Max = 100000;
@@ -2997,8 +3009,6 @@ void UpdateUnitVariables(CUnit &unit)
 		}
 	}
 	
-	unit.Variable[LEVELUP_INDEX].Max = 100000;
-
 	if (unit.Variable[GENDER_INDEX].Value == NoGender && unit.Type->BoolFlag[ORGANIC_INDEX].value) { // Gender: 0 = Not Set, 1 = Male, 2 = Female, 3 = Asexual
 		unit.Variable[GENDER_INDEX].Value = SyncRand(2) + 1;
 		unit.Variable[GENDER_INDEX].Max = MaxGenders;

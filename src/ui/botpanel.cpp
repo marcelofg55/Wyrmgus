@@ -389,7 +389,7 @@ static bool CanShowPopupContent(const PopupConditionPanel *condition,
 		return false;
 	}
 	
-	if (condition->Quote && type && type->Quote.empty() && !(button.Action == ButtonUnit && UnitManager.GetSlotUnit(button.Value).Unique && !GetUniqueItem(UnitManager.GetSlotUnit(button.Value).Name)->Quote.empty())) {
+	if (condition->Quote && type && type->Quote.empty() && !(button.Action == ButtonUnit && UnitManager.GetSlotUnit(button.Value).Unique && !GetUniqueItem(UnitManager.GetSlotUnit(button.Value).Name)->Quote.empty()) && !(button.Action == ButtonUnit && UnitManager.GetSlotUnit(button.Value).Work != NULL && !UnitManager.GetSlotUnit(button.Value).Work->Quote.empty())) {
 		return false;
 	}
 	//Wyrmgus end
@@ -425,11 +425,11 @@ static bool CanShowPopupContent(const PopupConditionPanel *condition,
 				CUnit &unit = UnitManager.GetSlotUnit(button.Value);
 				if (unit.Type->BoolFlag[ITEM_INDEX].value && unit.Container != NULL && unit.Container->HasInventory()) {
 					if (i == BASICDAMAGE_INDEX) {
-						if ((condition->Variables[i] == CONDITION_ONLY) ^ (unit.Container->GetEquipmentVariableChange(&unit, i) != 0 || unit.Container->GetEquipmentVariableChange(&unit, PIERCINGDAMAGE_INDEX) != 0)) {
+						if ((condition->Variables[i] == CONDITION_ONLY) ^ (unit.Container->GetItemVariableChange(&unit, i) != 0 || unit.Container->GetItemVariableChange(&unit, PIERCINGDAMAGE_INDEX) != 0)) {
 							return false;
 						}
 					} else {
-						if ((condition->Variables[i] == CONDITION_ONLY) ^ (unit.Container->GetEquipmentVariableChange(&unit, i) != 0)) { //the former for some reason wasn't working with negative values
+						if ((condition->Variables[i] == CONDITION_ONLY) ^ (unit.Container->GetItemVariableChange(&unit, i) != 0)) { //the former for some reason wasn't working with negative values
 							return false;
 						}
 					}
@@ -486,6 +486,21 @@ static bool CanShowPopupContent(const PopupConditionPanel *condition,
 					return false;
 				}
 			}
+			if (condition->Work != CONDITION_TRUE) {
+				if ((condition->Work == CONDITION_ONLY) ^ (unit.Work != NULL)) {
+					return false;
+				}
+			}
+			if (condition->ReadWork != CONDITION_TRUE) {
+				if ((condition->ReadWork == CONDITION_ONLY) ^ (unit.Work != NULL && unit.Container->IndividualUpgrades[unit.Work->ID])) {
+					return false;
+				}
+			}
+			if (condition->CanUse != CONDITION_TRUE) {
+				if ((condition->CanUse == CONDITION_ONLY) ^ (unit.Container->CanUseItem(&unit))) {
+					return false;
+				}
+			}
 			if (condition->Unique != CONDITION_TRUE) {
 				if ((condition->Unique == CONDITION_ONLY) ^ (unit.Unique || unit.Character != NULL)) {
 					return false;
@@ -523,7 +538,7 @@ static bool CanShowPopupContent(const PopupConditionPanel *condition,
 			}
 			if (condition->Regeneration != CONDITION_TRUE) {
 				if (unit.Type->BoolFlag[ITEM_INDEX].value && unit.Container != NULL && unit.Container->HasInventory()) {
-					if ((condition->Regeneration == CONDITION_ONLY) ^ (unit.Container->GetEquipmentVariableChange(&unit, HITPOINTBONUS_INDEX, true) != 0)) {
+					if ((condition->Regeneration == CONDITION_ONLY) ^ (unit.Container->GetItemVariableChange(&unit, HITPOINTBONUS_INDEX, true) != 0)) {
 						return false;
 					}
 				} else {
@@ -1839,6 +1854,7 @@ void CButtonPanel::DoClicked_ExperienceUpgradeTo(int button)
 		if (Selected[0]->Player->GetUnitTotalCount(type) < Selected[0]->Player->Allow.Units[type.Slot] || Selected[0]->Player->CheckLimits(type) != -6) { //ugly way to make the checklimits message only appear when it should
 			if (Selected[i]->CurrentAction() != UnitActionUpgradeTo) {
 				Selected[i]->Variable[LEVELUP_INDEX].Value -= 1;
+				Selected[i]->Variable[LEVELUP_INDEX].Max = Selected[i]->Variable[LEVELUP_INDEX].Value;
 				if (!IsNetworkGame() && Selected[i]->Character != NULL && Selected[i]->Character->Persistent && Selected[i]->Player->AiEnabled == false) {	//save the unit-type experience upgrade for persistent characters
 					if (Selected[i]->Character->Type->Slot != type.Slot) {
 						Selected[i]->Character->Type = const_cast<CUnitType *>(&(*UnitTypes[CurrentButtons[button].Value]));

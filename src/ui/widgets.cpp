@@ -2909,10 +2909,9 @@ void ImageDropDownWidget::draw(gcn::Graphics *graphics)
 
 	//Wyrmgus start
 //	img->Resize(getWidth(), h);
-	//Wyrmgus end
-	graphics->drawImage(img, 0, 0, 0, 0, img->getWidth(), img->getHeight());
-	//Wyrmgus start
+//	graphics->drawImage(img, 0, 0, 0, 0, getWidth(), h);
 //	img->SetOriginalSize();
+	graphics->drawImage(img, 0, 0, 0, 0, img->getWidth(), img->getHeight());
 	//Wyrmgus end
 	
 	graphics->setFont(getFont());

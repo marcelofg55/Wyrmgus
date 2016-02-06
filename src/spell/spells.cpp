@@ -210,6 +210,23 @@ static bool PassCondition(const CUnit &caster, const SpellType &spell, const CUn
 			return false;
 		}
 	}
+	//Wyrmgus start
+	if (condition->ThrustingWeapon != CONDITION_TRUE) {
+		if ((condition->ThrustingWeapon == CONDITION_ONLY) ^ (caster.GetCurrentWeaponClass() == DaggerItemClass || caster.GetCurrentWeaponClass() == SwordItemClass || caster.GetCurrentWeaponClass() == ThrustingSwordItemClass || caster.GetCurrentWeaponClass() == SpearItemClass)) {
+			return false;
+		}
+	}
+	if (condition->FactionUnit != CONDITION_TRUE) {
+		if ((condition->FactionUnit == CONDITION_ONLY) ^ (!caster.Type->Faction.empty())) {
+			return false;
+		}
+	}
+	if (condition->FactionEquivalent != NULL) {
+		if (caster.Type->Civilization.empty() || caster.Type->Civilization != PlayerRaces.Name[condition->FactionEquivalent->Civilization] || PlayerRaces.GetFactionClassUnitType(condition->FactionEquivalent->Civilization, condition->FactionEquivalent->ID, GetUnitTypeClassIndexByName(caster.Type->Class)) == -1) {
+			return false;
+		}
+	}
+	//Wyrmgus end
 	return true;
 }
 
@@ -599,6 +616,9 @@ SpellType::SpellType(int slot, const std::string &ident) :
 	AutoCast(NULL), AICast(NULL), ForceUseAnimation(false)
 {
 	memset(Costs, 0, sizeof(Costs));
+	//Wyrmgus start
+	memset(ItemSpell, 0, sizeof(ItemSpell));
+	//Wyrmgus end
 }
 
 /**

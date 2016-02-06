@@ -167,7 +167,7 @@ bool CUnitStats::operator != (const CUnitStats &rhs) const
 CUpgrade::CUpgrade(const std::string &ident) :
 	//Wyrmgus start
 //	Ident(ident), ID(0)
-	Ident(ident), ID(0), Ability(false), Weapon(false), Shield(false), Boots(false), Arrows(false), MagicPrefix(false), MagicSuffix(false), RunicAffix(false)
+	Ident(ident), ID(0), Ability(false), Weapon(false), Shield(false), Boots(false), Arrows(false), MagicPrefix(false), MagicSuffix(false), RunicAffix(false),Work(-1)
 	//Wyrmgus end
 {
 	memset(this->Costs, 0, sizeof(this->Costs));
@@ -1184,7 +1184,7 @@ static void ApplyUpgradeModifier(CPlayer &player, const CUpgradeModifier *um)
 					
 					//Wyrmgus start
 					for (size_t j = 0; j < UnitTypes.size(); ++j) {
-						if (um->Modifier.UnitStock[j]) {
+						if (um->Modifier.UnitStock[j] < 0) {
 							unit.UnitStock[j] += um->Modifier.UnitStock[j];
 							unit.UnitStock[j] = std::max(unit.UnitStock[j], 0);
 						}
@@ -1460,7 +1460,7 @@ static void RemoveUpgradeModifier(CPlayer &player, const CUpgradeModifier *um)
 					
 					//Wyrmgus start
 					for (size_t j = 0; j < UnitTypes.size(); ++j) {
-						if (um->Modifier.UnitStock[j]) {
+						if (um->Modifier.UnitStock[j] > 0) {
 							unit.UnitStock[j] -= um->Modifier.UnitStock[j];
 							unit.UnitStock[j] = std::max(unit.UnitStock[j], 0);
 						}
@@ -1552,7 +1552,7 @@ void ApplyIndividualUpgradeModifier(CUnit &unit, const CUpgradeModifier *um)
 	
 	//Wyrmgus start
 	for (size_t j = 0; j < UnitTypes.size(); ++j) {
-		if (um->Modifier.UnitStock[j]) {
+		if (um->Modifier.UnitStock[j] < 0) {
 			unit.UnitStock[j] += um->Modifier.UnitStock[j];
 			unit.UnitStock[j] = std::max(unit.UnitStock[j], 0);
 		}
@@ -1643,7 +1643,7 @@ void RemoveIndividualUpgradeModifier(CUnit &unit, const CUpgradeModifier *um)
 	
 	//Wyrmgus start
 	for (size_t j = 0; j < UnitTypes.size(); ++j) {
-		if (um->Modifier.UnitStock[j]) {
+		if (um->Modifier.UnitStock[j] > 0) {
 			unit.UnitStock[j] -= um->Modifier.UnitStock[j];
 			unit.UnitStock[j] = std::max(unit.UnitStock[j], 0);
 		}
@@ -1774,6 +1774,7 @@ void ApplyUpgrades()
 void AbilityAcquire(CUnit &unit, CUpgrade *upgrade)
 {
 	unit.Variable[LEVELUP_INDEX].Value -= 1;
+	unit.Variable[LEVELUP_INDEX].Max = unit.Variable[LEVELUP_INDEX].Value;
 	if (!IsNetworkGame() && unit.Character != NULL && unit.Character->Persistent && unit.Player->AiEnabled == false) { //save ability learning, if unit has a character and it is persistent, and the character doesn't have the ability yet
 		if (std::find(unit.Character->Abilities.begin(), unit.Character->Abilities.end(), upgrade) == unit.Character->Abilities.end()) {
 			unit.Character->Abilities.push_back(upgrade);
@@ -1793,6 +1794,7 @@ void AbilityAcquire(CUnit &unit, CUpgrade *upgrade)
 void AbilityLost(CUnit &unit, CUpgrade *upgrade)
 {
 	unit.Variable[LEVELUP_INDEX].Value += 1;
+	unit.Variable[LEVELUP_INDEX].Max = unit.Variable[LEVELUP_INDEX].Value;
 	if (!IsNetworkGame() && unit.Character != NULL && unit.Character->Persistent && unit.Player->AiEnabled == false) { //save ability learning, if unit has a character and it is persistent, and the character doesn't have the ability yet
 		if (std::find(unit.Character->Abilities.begin(), unit.Character->Abilities.end(), upgrade) != unit.Character->Abilities.end()) {
 			unit.Character->Abilities.erase(std::remove(unit.Character->Abilities.begin(), unit.Character->Abilities.end(), upgrade), unit.Character->Abilities.end());
@@ -2032,7 +2034,7 @@ std::string GetUpgradeEffectsString(std::string upgrade_ident)
 							upgrade_effects_string += "+";
 						}
 						upgrade_effects_string += std::to_string((long long) UpgradeModifiers[z]->Modifier.Variables[var].Value);
-						if (var == BACKSTAB_INDEX || var == FIRERESISTANCE_INDEX || var == COLDRESISTANCE_INDEX || var == ARCANERESISTANCE_INDEX || var == LIGHTNINGRESISTANCE_INDEX || var == AIRRESISTANCE_INDEX || var == EARTHRESISTANCE_INDEX || var == WATERRESISTANCE_INDEX || var == HACKRESISTANCE_INDEX || var == PIERCERESISTANCE_INDEX || var == BLUNTRESISTANCE_INDEX || var == TIMEEFFICIENCYBONUS_INDEX) {
+						if (var == BACKSTAB_INDEX || var == BONUSAGAINSTMOUNTED_INDEX || var == BONUSAGAINSTBUILDINGS_INDEX || var == BONUSAGAINSTAIR_INDEX || var == BONUSAGAINSTGIANTS_INDEX || var == BONUSAGAINSTDRAGONS_INDEX || var == FIRERESISTANCE_INDEX || var == COLDRESISTANCE_INDEX || var == ARCANERESISTANCE_INDEX || var == LIGHTNINGRESISTANCE_INDEX || var == AIRRESISTANCE_INDEX || var == EARTHRESISTANCE_INDEX || var == WATERRESISTANCE_INDEX || var == HACKRESISTANCE_INDEX || var == PIERCERESISTANCE_INDEX || var == BLUNTRESISTANCE_INDEX || var == TIMEEFFICIENCYBONUS_INDEX) {
 							upgrade_effects_string += "%";
 						}
 						upgrade_effects_string += " ";

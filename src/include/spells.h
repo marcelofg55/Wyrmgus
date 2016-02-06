@@ -51,6 +51,9 @@ class CPlayer;
 struct lua_State;
 class SpellType;
 class MissileType;
+//Wyrmgus start
+class CFaction;
+//Wyrmgus end
 
 /*----------------------------------------------------------------------------
 --  Definitons
@@ -137,6 +140,9 @@ class ConditionInfo
 {
 public:
 	ConditionInfo() : Alliance(0), Opponent(0), TargetSelf(0),
+		//Wyrmgus start
+		ThrustingWeapon(0), FactionUnit(0), FactionEquivalent(NULL),
+		//Wyrmgus end
 		BoolFlag(NULL), Variable(NULL), CheckFunc(NULL) {};
 	~ConditionInfo()
 	{
@@ -153,6 +159,11 @@ public:
 	char Alliance;          /// Target is allied. (neutral is neither allied, nor opponent)
 	char Opponent;          /// Target is opponent. (neutral is neither allied, nor opponent)
 	char TargetSelf;        /// Target is the same as the caster.
+	//Wyrmgus start
+	char ThrustingWeapon;	/// Caster has a thrusting weapon as the current weapon.
+	char FactionUnit;		/// Caster is a faction-specific unit.
+	CFaction *FactionEquivalent;	/// Caster is of the same civilization as this faction, and the faction has its own unit of the caster's class.
+	//Wyrmgus end
 
 	char *BoolFlag;         /// User defined boolean flag.
 
@@ -233,6 +244,10 @@ public:
 
 	// Graphics and sounds. Add something else here?
 	SoundConfig SoundWhenCast;  /// Sound played if cast
+	
+	//Wyrmgus start
+	bool ItemSpell[MaxItemClasses];
+	//Wyrmgus end
 
 	bool IsCasterOnly() const
 	{

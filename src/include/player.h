@@ -150,6 +150,9 @@ public:
 	int    TotalResources[MaxCosts];
 	int    TotalRazings;
 	int    TotalKills;      /// How many unit killed
+	//Wyrmgus start
+	int UnitTypeKills[UnitTypeMax];  /// total killed units of unit-type
+	//Wyrmgus end
 
 	//Wyrmgus start
 	int LostTownHallTimer;	/// The timer for when the player lost the last town hall (to make the player's units be revealed)
@@ -302,8 +305,7 @@ class CFaction
 {
 public:
 	CFaction() : 
-		Name(""), Type(""), FactionUpgrade(""),
-		DefaultTier(FactionTierBarony), ParentFaction(-1),
+		ID(-1), Civilization(-1), DefaultTier(FactionTierBarony), ParentFaction(-1), Language(-1),
 		Playable(true) //factions are playable by default
 	{
 	}
@@ -311,8 +313,11 @@ public:
 	std::string Name;													/// faction name
 	std::string Type;													/// faction type (tribe or polity)
 	std::string FactionUpgrade;											/// faction upgrade applied when the faction is set
+	int ID;																/// faction ID
+	int Civilization;													/// faction civilization
 	int DefaultTier;													/// default faction tier
 	int ParentFaction;													/// parent faction of this faction
+	int Language;
 	bool Playable;														/// faction playability
 	std::vector<int> Colors;											/// faction colors
 	std::vector<std::string> DevelopsTo;								/// to which factions this faction can develop
@@ -345,10 +350,7 @@ class LanguageWord
 {
 public:
 	LanguageWord() : 
-		NameSingular(false), NamePlural(false),
-		PrefixSingular(false), PrefixPlural(false),
-		SuffixSingular(false), SuffixPlural(false),
-		InfixSingular(false), InfixPlural(false)
+		Word("")
 	{
 	}
 	
@@ -356,20 +358,20 @@ public:
 	bool HasPrefixTypeName(std::string type);
 	bool HasSuffixTypeName(std::string type);
 	bool HasInfixTypeName(std::string type);
+	bool HasSeparatePrefixTypeName(std::string type);
+	bool HasSeparateSuffixTypeName(std::string type);
+	bool HasSeparateInfixTypeName(std::string type);
+	bool HasMeaning(std::string meaning);
 
 	std::string Word;				/// Word name / ID.
-	bool NameSingular;				/// Whether the noun's singular form can be used as a name
-	bool NamePlural;				/// Whether the noun's plural form can be used as a name
-	bool PrefixSingular;			/// Whether the noun's singular form can be used as a prefix
-	bool PrefixPlural;				/// Whether the noun's plural form can be used as a prefix
-	bool SuffixSingular;			/// Whether the noun's singular form can be used as a suffix
-	bool SuffixPlural;				/// Whether the noun's plural form can be used as a suffix
-	bool InfixSingular;				/// Whether the noun's singular form can be used as an infix
-	bool InfixPlural;				/// Whether the noun's plural form can be used as an infix
+	std::vector<std::string> Meanings;			/// Meanings of the word in English.
 	std::vector<std::string> TypeName;
 	std::vector<std::string> PrefixTypeName;
 	std::vector<std::string> SuffixTypeName;
 	std::vector<std::string> InfixTypeName;
+	std::vector<std::string> SeparatePrefixTypeName;
+	std::vector<std::string> SeparateSuffixTypeName;
+	std::vector<std::string> SeparateInfixTypeName;
 };
 
 class LanguageNoun : public LanguageWord
@@ -384,7 +386,6 @@ public:
 	{
 	}
 
-	std::string Meaning;			/// Meaning of the word in English.
 	std::string Verb;				/// Equivalent verb, if any.
 	std::string Adjective;			/// Equivalent adjective, if any.
 	std::string SingularNominative;
@@ -414,7 +415,6 @@ public:
 	{
 	}
 
-	std::string Meaning;							/// Meaning of the word in English.
 	std::string Noun;								/// Equivalent noun, if any.
 	std::string Adjective;							/// Equivalent adjective, if any.
 	std::string Infinitive;
@@ -453,11 +453,14 @@ public:
 	{
 	}
 
-	std::string Meaning;			/// Meaning of the word in English.
 	std::string Noun;				/// Equivalent noun, if any.
 	std::string Verb;				/// Equivalent verb, if any.
+	std::string Positive;			/// Positive form of the adjective.
 	std::string Comparative;		/// Comparative form of the adjective.
 	std::string Superlative;		/// Superlative form of the adjective.
+	std::string PositivePlural;		/// Positive plural form of the adjective.
+	std::string ComparativePlural;	/// Comparative plural form of the adjective.
+	std::string SuperlativePlural;	/// Superlative plural form of the adjective.
 };
 
 class LanguagePronoun : public LanguageWord
@@ -467,7 +470,6 @@ public:
 	{
 	}
 
-	std::string Meaning;			/// Meaning of the word in English.
 	std::string Nominative;			/// Nominative case for the pronoun (if any)
 	std::string Accusative;			/// Accusative case for the pronoun (if any)
 	std::string Dative;				/// Dative case for the pronoun (if any)
@@ -481,7 +483,6 @@ public:
 	{
 	}
 
-	std::string Meaning;			/// Meaning of the word in English.
 	std::string Adjective;			/// Equivalent adjective, if any (i.e. "beautifully"'s equivalent adjective would be "beautiful".
 };
 
@@ -492,7 +493,31 @@ public:
 	{
 	}
 
-	std::string Meaning;			/// Meaning of the word in English.
+};
+
+class LanguageAdposition : public LanguageWord
+{
+public:
+	LanguageAdposition() : LanguageWord()
+	{
+	}
+
+};
+
+class LanguageArticle : public LanguageWord
+{
+public:
+	LanguageArticle() : LanguageWord(),
+		Definite(false)
+	{
+	}
+
+	std::string Nominative;			/// Nominative case for the article
+	std::string Accusative;			/// Accusative case for the article
+	std::string Dative;				/// Dative case for the article
+	std::string Genitive;			/// Genitive case for the article
+	std::string Gender;				/// Gender of the article
+	bool Definite;					/// Whether the article is definite
 };
 
 class LanguageNumeral : public LanguageWord
@@ -504,6 +529,30 @@ public:
 	}
 
 	int Number;
+};
+
+class CLanguage
+{
+public:
+	CLanguage() :
+		Ident(""), Name("")
+	{
+	}
+	
+	std::string GetArticle(std::string gender, std::string grammatical_case, bool definite);
+	
+	std::string Ident;	/// Ident of the language
+	std::string Name;	/// Name of the language
+	std::vector<LanguageNoun *> LanguageNouns;								/// nouns of the language
+	std::vector<LanguageVerb *> LanguageVerbs;								/// verbs of the language
+	std::vector<LanguageAdjective *> LanguageAdjectives;					/// adjectives of the language
+	std::vector<LanguagePronoun *> LanguagePronouns;						/// pronouns of the language
+	std::vector<LanguageAdverb *> LanguageAdverbs;							/// adverbs of the language
+	std::vector<LanguageConjunction *> LanguageConjunctions;				/// conjunctions of the language
+	std::vector<LanguageAdposition *> LanguageAdpositions;					/// adpositions of the language
+	std::vector<LanguageArticle *> LanguageArticles;						/// articles of the language
+	std::vector<LanguageNumeral *> LanguageNumerals;						/// numerals of the language
+	std::string NameTranslations[PersonalNameMax][2];		/// name translations (2 values: one for the name to be translated, and another for the translation)
 };
 //Wyrmgus end
 
@@ -532,6 +581,7 @@ public:
 			}
 		}
 		memset(Playable, 0, sizeof(Playable));
+		memset(CivilizationLanguage, -1, sizeof(CivilizationLanguage));
 		//Wyrmgus end
 	}
 
@@ -540,13 +590,14 @@ public:
 	//Wyrmgus start
 	int GetFactionIndexByName(const int civilization, const std::string faction_name) const;
 	int GetDeityIndexByName(const int civilization, std::string deity_name) const;
+	int GetLanguageIndexByIdent(std::string language_ident) const;
 	int GetCivilizationClassUnitType(int civilization, int class_id);
 	int GetCivilizationClassUpgrade(int civilization, int class_id);
 	int GetFactionClassUnitType(int civilization, int faction, int class_id);
 	int GetFactionClassUpgrade(int civilization, int faction, int class_id);
-	bool RequiresPlural(std::string word, int civilization) const;
-	std::string GetPluralForm(std::string word, int civilization) const;
-	std::string TranslateName(std::string name, int civilization);
+	int GetCivilizationLanguage(int civilization);
+	int GetFactionLanguage(int civilization, int faction);
+	std::string TranslateName(std::string name, int language);
 	//Wyrmgus end
 
 public:
@@ -573,14 +624,8 @@ public:
 	std::string SettlementNames[MAX_RACES][PersonalNameMax];			/// settlement names
 	std::string SettlementNamePrefixes[MAX_RACES][PersonalNameMax];		/// settlement name prefixes
 	std::string SettlementNameSuffixes[MAX_RACES][PersonalNameMax];		/// settlement name suffixes
-	std::string NameTranslations[MAX_RACES][PersonalNameMax][2];		/// name translations (2 values: one for the name to be translated, and another for the translation)
-	LanguageNoun *LanguageNouns[MAX_RACES][LanguageWordMax];				/// nouns of the civilization's language
-	LanguageVerb *LanguageVerbs[MAX_RACES][LanguageWordMax];				/// verbs of the civilization's language
-	LanguageAdjective *LanguageAdjectives[MAX_RACES][LanguageWordMax];		/// adjectives of the civilization's language
-	LanguagePronoun *LanguagePronouns[MAX_RACES][LanguageWordMax];			/// pronouns of the civilization's language
-	LanguageAdverb *LanguageAdverbs[MAX_RACES][LanguageWordMax];			/// adverbs of the civilization's language
-	LanguageConjunction *LanguageConjunctions[MAX_RACES][LanguageWordMax];	/// conjunctions of the civilization's language
-	LanguageNumeral *LanguageNumerals[MAX_RACES][LanguageWordMax];			/// numerals of the civilization's language
+	int CivilizationLanguage[MAX_RACES];
+	std::vector<CLanguage *> Languages;									/// languages
 	//Wyrmgus end
 	unsigned int Count;             /// number of races
 };

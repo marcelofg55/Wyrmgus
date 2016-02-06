@@ -1163,7 +1163,7 @@ std::string EvalString(const StringDesc *s)
 		//Wyrmgus start
 		case EString_UnitTypeName : // name of the UnitType
 			unit = EvalUnit(s->D.Unit);
-			if (unit != NULL && !unit->Name.empty() && ((unit->Prefix == NULL && unit->Suffix == NULL && unit->Spell == NULL) || unit->Unique)) { //items with affixes use their type name in their given name, so there's no need to repeat their type name
+			if (unit != NULL && !unit->Name.empty() && ((unit->Prefix == NULL && unit->Suffix == NULL && unit->Spell == NULL) || unit->Unique || unit->Work != NULL)) { //items with affixes use their type name in their given name, so there's no need to repeat their type name
 				return unit->GetTypeName();
 			} else { // only return a unit type name if the unit has a personal name (otherwise the unit type name would be returned as the unit name)
 				return std::string("");
@@ -1186,7 +1186,11 @@ std::string EvalString(const StringDesc *s)
 			unit = EvalUnit(s->D.Unit);
 			if (unit != NULL) {
 				if (!unit->Unique) {
-					return unit->Type->Quote;
+					if (unit->Work != NULL) {
+						return unit->Work->Quote;
+					} else {
+						return unit->Type->Quote;
+					}
 				} else {
 					return GetUniqueItem(unit->Name)->Quote;
 				}

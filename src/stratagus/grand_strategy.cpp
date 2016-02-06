@@ -1721,6 +1721,57 @@ void CProvince::SetOwner(int civilization_id, int faction_id)
 				}
 			}
 		}
+		
+		// if the province's new owner is a faction that has a language different from that of its civilization, generate a faction-specific name for the province
+		if (PlayerRaces.GetFactionLanguage(civilization_id, faction_id) != -1 && PlayerRaces.GetFactionLanguage(civilization_id, faction_id) != PlayerRaces.GetCivilizationLanguage(civilization_id)) {
+			if (this->FactionCulturalNames[civilization_id][faction_id].empty()) {
+				std::string new_province_name = "";
+				// first see if can translate the cultural name of the province's current civilization
+				if (this->Civilization != -1 && !this->CulturalNames[this->Civilization].empty()) {
+					new_province_name = PlayerRaces.TranslateName(this->CulturalNames[this->Civilization], PlayerRaces.GetFactionLanguage(civilization_id, faction_id));
+				}
+				if (new_province_name == "") { // try to translate any cultural name
+					for (int i = 0; i < MAX_RACES; ++i) {
+						if (!this->CulturalNames[i].empty()) {
+							new_province_name = PlayerRaces.TranslateName(this->CulturalNames[i], PlayerRaces.GetFactionLanguage(civilization_id, faction_id)); 
+							if (!new_province_name.empty()) {
+								break;
+							}
+						}
+					}
+				}
+				if (new_province_name == "") { // if trying to translate all cultural names failed, generate a new name
+					new_province_name = this->GenerateProvinceName(civilization_id, faction_id);
+				}
+				if (!new_province_name.empty()) {
+					this->FactionCulturalNames[civilization_id][faction_id] = new_province_name;
+				}
+			}
+			
+			if (this->FactionCulturalSettlementNames[civilization_id][faction_id].empty()) {
+				std::string new_settlement_name = "";
+				// first see if can translate the cultural name of the province's current civilization
+				if (this->Civilization != -1 && !this->CulturalSettlementNames[this->Civilization].empty()) {
+					new_settlement_name = PlayerRaces.TranslateName(this->CulturalSettlementNames[this->Civilization], PlayerRaces.GetFactionLanguage(civilization_id, faction_id));
+				}
+				if (new_settlement_name == "") { // try to translate any cultural name
+					for (int i = 0; i < MAX_RACES; ++i) {
+						if (!this->CulturalSettlementNames[i].empty()) {
+							new_settlement_name = PlayerRaces.TranslateName(this->CulturalSettlementNames[i], PlayerRaces.GetFactionLanguage(civilization_id, faction_id)); 
+							if (!new_settlement_name.empty()) {
+								break;
+							}
+						}
+					}
+				}
+				if (new_settlement_name == "") { // if trying to translate all cultural names failed, generate a new name
+					new_settlement_name = this->GenerateSettlementName(civilization_id, faction_id);
+				}
+				if (!new_settlement_name.empty()) {
+					this->FactionCulturalSettlementNames[civilization_id][faction_id] = new_settlement_name;
+				}
+			}
+		}
 	} else {
 		this->Owner = NULL;
 		this->SetCivilization(-1); //if there is no owner, change the civilization to none
@@ -1748,12 +1799,12 @@ void CProvince::SetCivilization(int civilization)
 				std::string new_tile_name = "";
 				// first see if can translate the cultural name of the old civilization
 				if (old_civilization != -1 && !GrandStrategyGame.WorldMapTiles[x][y]->CulturalNames[old_civilization].empty()) {
-					new_tile_name = PlayerRaces.TranslateName(GrandStrategyGame.WorldMapTiles[x][y]->CulturalNames[old_civilization], civilization);
+					new_tile_name = PlayerRaces.TranslateName(GrandStrategyGame.WorldMapTiles[x][y]->CulturalNames[old_civilization], PlayerRaces.GetCivilizationLanguage(civilization));
 				}
 				if (new_tile_name == "") { // try to translate any cultural name
 					for (int j = 0; j < MAX_RACES; ++j) {
 						if (!GrandStrategyGame.WorldMapTiles[x][y]->CulturalNames[j].empty()) {
-							new_tile_name = PlayerRaces.TranslateName(GrandStrategyGame.WorldMapTiles[x][y]->CulturalNames[j], civilization);
+							new_tile_name = PlayerRaces.TranslateName(GrandStrategyGame.WorldMapTiles[x][y]->CulturalNames[j], PlayerRaces.GetCivilizationLanguage(civilization));
 							if (!new_tile_name.empty()) {
 								break;
 							}
@@ -1761,7 +1812,7 @@ void CProvince::SetCivilization(int civilization)
 					}
 				}
 				if (new_tile_name == "") { // if trying to translate all cultural names failed, generate a new name
-					new_tile_name = GenerateName(civilization, "terrain-" + NameToIdent(GrandStrategyGame.TerrainTypes[GrandStrategyGame.WorldMapTiles[x][y]->Terrain]->Name));
+					new_tile_name = GenerateName(PlayerRaces.GetCivilizationLanguage(civilization), "terrain-" + NameToIdent(GrandStrategyGame.TerrainTypes[GrandStrategyGame.WorldMapTiles[x][y]->Terrain]->Name));
 				}
 				if (new_tile_name != "") {
 					GrandStrategyGame.WorldMapTiles[x][y]->CulturalNames[civilization] = new_tile_name;
@@ -1774,12 +1825,12 @@ void CProvince::SetCivilization(int civilization)
 			std::string new_settlement_name = "";
 			// first see if can translate the cultural name of the old civilization
 			if (old_civilization != -1 && !this->CulturalSettlementNames[old_civilization].empty()) {
-				new_settlement_name = PlayerRaces.TranslateName(this->CulturalSettlementNames[old_civilization], civilization);
+				new_settlement_name = PlayerRaces.TranslateName(this->CulturalSettlementNames[old_civilization], PlayerRaces.GetCivilizationLanguage(civilization));
 			}
 			if (new_settlement_name == "") { // try to translate any cultural name
 				for (int i = 0; i < MAX_RACES; ++i) {
 					if (!this->CulturalSettlementNames[i].empty()) {
-						new_settlement_name = PlayerRaces.TranslateName(this->CulturalSettlementNames[i], civilization);
+						new_settlement_name = PlayerRaces.TranslateName(this->CulturalSettlementNames[i], PlayerRaces.GetCivilizationLanguage(civilization));
 						if (!new_settlement_name.empty()) {
 							break;
 						}
@@ -1799,12 +1850,12 @@ void CProvince::SetCivilization(int civilization)
 			std::string new_province_name = "";
 			// first see if can translate the cultural name of the old civilization
 			if (old_civilization != -1 && !this->CulturalNames[old_civilization].empty()) {
-				new_province_name = PlayerRaces.TranslateName(this->CulturalNames[old_civilization], civilization);
+				new_province_name = PlayerRaces.TranslateName(this->CulturalNames[old_civilization], PlayerRaces.GetCivilizationLanguage(civilization));
 			}
 			if (new_province_name == "") { // try to translate any cultural name
 				for (int i = 0; i < MAX_RACES; ++i) {
 					if (!this->CulturalNames[i].empty()) {
-						new_province_name = PlayerRaces.TranslateName(this->CulturalNames[i], civilization);
+						new_province_name = PlayerRaces.TranslateName(this->CulturalNames[i], PlayerRaces.GetCivilizationLanguage(civilization));
 						if (!new_province_name.empty()) {
 							break;
 						}
@@ -2403,16 +2454,20 @@ std::string CProvince::GetCulturalSettlementName()
 /**
 **  Generate a province name for the civilization.
 */
-std::string CProvince::GenerateProvinceName(int civilization)
+std::string CProvince::GenerateProvinceName(int civilization, int faction)
 {
-	std::string province_name;
-
 	//10% chance that the province will be named after its settlement
-	if (civilization != -1 && !this->CulturalSettlementNames[civilization].empty() && SyncRand(100) < 10) {
+	if (civilization != -1 && faction != -1 && !this->FactionCulturalSettlementNames[civilization][faction].empty() && SyncRand(100) < 10) {
+		return this->FactionCulturalSettlementNames[civilization][faction];
+	} else if (civilization != -1 && faction == -1 && !this->CulturalSettlementNames[civilization].empty() && SyncRand(100) < 10) {
 		return this->CulturalSettlementNames[civilization];
 	}
 	
-	return GenerateName(civilization, "province");
+	if (faction != -1) {
+		return GenerateName(PlayerRaces.GetFactionLanguage(civilization, faction), "province");
+	} else {
+		return GenerateName(PlayerRaces.GetCivilizationLanguage(civilization), "province");
+	}
 }
 
 /**
@@ -2420,16 +2475,18 @@ std::string CProvince::GenerateProvinceName(int civilization)
 **
 **  @param l  Lua state.
 */
-std::string CProvince::GenerateSettlementName(int civilization)
+std::string CProvince::GenerateSettlementName(int civilization, int faction)
 {
-	std::string settlement_name;
-	
 	//10% chance that the settlement will be named after a named terrain feature in its tile, if there is any
-	if (civilization != -1 && this->SettlementLocation.x != -1 && this->SettlementLocation.y != -1 && !GrandStrategyGame.WorldMapTiles[this->SettlementLocation.x][this->SettlementLocation.y]->CulturalNames[civilization].empty() && SyncRand(100) < 10) {
+	if (civilization != -1 && faction == -1 && this->SettlementLocation.x != -1 && this->SettlementLocation.y != -1 && !GrandStrategyGame.WorldMapTiles[this->SettlementLocation.x][this->SettlementLocation.y]->CulturalNames[civilization].empty() && SyncRand(100) < 10) {
 		return GrandStrategyGame.WorldMapTiles[this->SettlementLocation.x][this->SettlementLocation.y]->CulturalNames[civilization];
 	}
 	
-	return GenerateName(civilization, "settlement");
+	if (faction != -1) {
+		return GenerateName(PlayerRaces.GetFactionLanguage(civilization, faction), "settlement");
+	} else {
+		return GenerateName(PlayerRaces.GetCivilizationLanguage(civilization), "settlement");
+	}
 }
 
 void CGrandStrategyFaction::SetTechnology(int upgrade_id, bool has_technology, bool secondary_setting)
@@ -2796,7 +2853,11 @@ void CGrandStrategyFaction::GenerateRuler()
 	}
 	
 	int civilization = PlayerRaces.GetRaceIndexByName(UnitTypes[unit_type_id]->Civilization.c_str()); //use unit type's civilization, so that names can be generated even for civilizations for which we don't have personal name language data defined
-	std::string hero_name = GeneratePersonalName(civilization, unit_type_id);
+	int language = PlayerRaces.GetCivilizationLanguage(civilization);
+	if (civilization != -1 && this->Civilization == civilization && this->Faction != -1) {
+		language = PlayerRaces.GetFactionLanguage(civilization, this->Faction);
+	}
+	std::string hero_name = GeneratePersonalName(language, unit_type_id);
 	
 	if (hero_name.empty()) { //if civilization can't generate personal names, return
 		return;
@@ -2804,9 +2865,9 @@ void CGrandStrategyFaction::GenerateRuler()
 	
 	std::string hero_extra_name;
 	if (GrandStrategyGame.GetHero(hero_name) != NULL) { // generate extra given names if this name is already used by an existing hero
-		hero_extra_name = GeneratePersonalName(civilization, unit_type_id);
+		hero_extra_name = GeneratePersonalName(language, unit_type_id);
 		while (GrandStrategyGame.GetHero(hero_name + " " + hero_extra_name) != NULL) {
-			hero_extra_name += " " + GeneratePersonalName(civilization, unit_type_id);
+			hero_extra_name += " " + GeneratePersonalName(language, unit_type_id);
 		}
 	}
 	CGrandStrategyHero *hero = new CGrandStrategyHero;

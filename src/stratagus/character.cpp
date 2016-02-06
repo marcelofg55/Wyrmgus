@@ -122,7 +122,7 @@ std::string CCharacter::GetFullName()
 CItem *CCharacter::GetItem(CUnit &item)
 {
 	for (size_t i = 0; i < this->Items.size(); ++i) {
-		if (this->Items[i]->Type == item.Type && this->Items[i]->Prefix == item.Prefix && this->Items[i]->Suffix == item.Suffix && this->Items[i]->Spell == item.Spell && this->Items[i]->Unique == item.Unique && this->Items[i]->Bound == item.Bound && this->IsItemEquipped(this->Items[i]) == item.Container->IsItemEquipped(&item)) {
+		if (this->Items[i]->Type == item.Type && this->Items[i]->Prefix == item.Prefix && this->Items[i]->Suffix == item.Suffix && this->Items[i]->Spell == item.Spell && this->Items[i]->Work == item.Work && this->Items[i]->Unique == item.Unique && this->Items[i]->Bound == item.Bound && this->IsItemEquipped(this->Items[i]) == item.Container->IsItemEquipped(&item)) {
 			if (this->Items[i]->Name.empty() || this->Items[i]->Name == item.Name) {
 				return this->Items[i];
 			}
@@ -275,6 +275,16 @@ void SaveHero(CCharacter *hero)
 		}
 		fprintf(fd, "},\n");
 	}
+	if (hero->ReadWorks.size() > 0) {
+		fprintf(fd, "\tReadWorks = {");
+		for (size_t j = 0; j < hero->ReadWorks.size(); ++j) {
+			fprintf(fd, "\"%s\"", hero->ReadWorks[j]->Ident.c_str());
+			if (j < (hero->ReadWorks.size() - 1)) {
+				fprintf(fd, ", ");
+			}
+		}
+		fprintf(fd, "},\n");
+	}
 	if (hero->Items.size() > 0) {
 		fprintf(fd, "\tItems = {");
 		for (size_t j = 0; j < hero->Items.size(); ++j) {
@@ -291,6 +301,9 @@ void SaveHero(CCharacter *hero)
 				}
 				if (hero->Items[j]->Spell != NULL) {
 					fprintf(fd, "\n\t\t\t\"spell\", \"%s\",", hero->Items[j]->Spell->Ident.c_str());
+				}
+				if (hero->Items[j]->Work != NULL) {
+					fprintf(fd, "\n\t\t\t\"work\", \"%s\",", hero->Items[j]->Work->Ident.c_str());
 				}
 				if (!hero->Items[j]->Name.empty()) {
 					fprintf(fd, "\n\t\t\t\"name\", \"%s\",", hero->Items[j]->Name.c_str());
@@ -471,6 +484,53 @@ void ChangeCustomHeroCivilization(std::string hero_full_name, std::string civili
 			}
 		}
 	}
+}
+
+bool IsNameValidForCustomHero(std::string hero_name, std::string hero_dynasty_name)
+{
+	std::string hero_full_name = hero_name;
+	if (!hero_dynasty_name.empty()) {
+		hero_full_name += " ";
+		hero_full_name += hero_dynasty_name;
+	}
+	
+	if (GetCustomHero(hero_full_name) != NULL) {
+		return false; //name already used
+	}
+	
+	if (hero_name.empty()) {
+		return false;
+	}
+	
+	if (
+		hero_full_name.find('\n') != -1
+		|| hero_full_name.find('\\') != -1
+		|| hero_full_name.find('/') != -1
+		|| hero_full_name.find('.') != -1
+		|| hero_full_name.find('*') != -1
+		|| hero_full_name.find('[') != -1
+		|| hero_full_name.find(']') != -1
+		|| hero_full_name.find(':') != -1
+		|| hero_full_name.find(';') != -1
+		|| hero_full_name.find('=') != -1
+		|| hero_full_name.find(',') != -1
+		|| hero_full_name.find('<') != -1
+		|| hero_full_name.find('>') != -1
+		|| hero_full_name.find('?') != -1
+		|| hero_full_name.find('|') != -1
+	) {
+		return false;
+	}
+	
+	if (hero_name.find_first_not_of(' ') == std::string::npos) {
+		return false; //name contains only spaces
+	}
+	
+	if (!hero_dynasty_name.empty() && hero_dynasty_name.find_first_not_of(' ') == std::string::npos) {
+		return false; //dynasty name contains only spaces
+	}
+	
+	return true;
 }
 
 std::string GetGenderNameById(int gender)

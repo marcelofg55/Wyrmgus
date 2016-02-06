@@ -114,6 +114,7 @@ public:
 	std::vector<CCharacter *> Children;	/// Children of the character
 	std::vector<CCharacter *> Siblings;	/// Siblings of the character
 	std::vector<CUpgrade *> Abilities;
+	std::vector<CUpgrade *> ReadWorks;
 	std::vector<CQuest *> QuestsInProgress;	/// Quests in progress, only for playable, custom characters
 	std::vector<CQuest *> QuestsCompleted;	/// Quests completed, only for playable, custom characters
 	std::vector<CItem *> Items;
@@ -144,6 +145,7 @@ extern void DeleteCustomHero(std::string hero_full_name);
 extern void SetCurrentCustomHero(std::string hero_full_name);
 extern std::string GetCurrentCustomHero();
 extern void ChangeCustomHeroCivilization(std::string hero_full_name, std::string civilization_name, std::string new_hero_name, std::string new_hero_dynasty_name);
+extern bool IsNameValidForCustomHero(std::string hero_name, std::string hero_dynasty_name);
 extern std::string GetGenderNameById(int gender);
 extern int GetGenderIdByName(std::string gender);
 extern void CharacterCclRegister();

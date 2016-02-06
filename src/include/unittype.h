@@ -265,6 +265,7 @@ enum {
 	MOUNTED_INDEX,
 	DIMINUTIVE_INDEX,
 	GIANT_INDEX,
+	DRAGON_INDEX,
 	DETRITUS_INDEX,
 	FLESH_INDEX,
 	VEGETABLE_INDEX,
@@ -367,6 +368,7 @@ enum {
 	BONUSAGAINSTBUILDINGS_INDEX,
 	BONUSAGAINSTAIR_INDEX,
 	BONUSAGAINSTGIANTS_INDEX,
+	BONUSAGAINSTDRAGONS_INDEX,
 	DAYSIGHTRANGEBONUS_INDEX,
 	NIGHTSIGHTRANGEBONUS_INDEX,
 	TRANSPARENCY_INDEX,
@@ -374,6 +376,7 @@ enum {
 	BIRTHCYCLE_INDEX,
 	HUNGER_INDEX,
 	STUN_INDEX,
+	BLEEDING_INDEX,
 	TIMEEFFICIENCYBONUS_INDEX,
 	//Wyrmgus end
 	NVARALREADYDEFINED
@@ -681,6 +684,7 @@ public:
 	std::vector<int> Drops;			/// Units which can spawn upon death (i.e. items).
 	std::vector<int> AiDrops;		/// Units which can spawn upon death (i.e. items), only for AI-controlled units.
 	std::vector<CUpgrade *> DropAffixes;	/// Affixes which can be applied to dropped items
+	std::vector<SpellType *> DropSpells;	/// Spells which can be applied to dropped items
 	std::vector<CUpgrade *> Affixes;	/// Affixes which can be generated for this unit type
 	std::vector<CUpgrade *> Traits;	/// Which traits this unit type can have
 	//Wyrmgus end

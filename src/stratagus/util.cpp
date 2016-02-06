@@ -564,6 +564,8 @@ std::string TransliterateText(std::string text) //convert special characters int
 	text = FindAndReplaceString(text, "ā", "a");
 	text = FindAndReplaceString(text, "Â", "A");
 	text = FindAndReplaceString(text, "â", "a");
+	text = FindAndReplaceString(text, "Ā́", "A");
+	text = FindAndReplaceString(text, "ā́", "a");
 	text = FindAndReplaceString(text, "Æ", "Ae");
 	text = FindAndReplaceString(text, "æ", "ae");
 	text = FindAndReplaceString(text, "Ǣ", "Ae");
@@ -574,12 +576,18 @@ std::string TransliterateText(std::string text) //convert special characters int
 	text = FindAndReplaceString(text, "ð", "d");
 	text = FindAndReplaceString(text, "Ḍ", "D");
 	text = FindAndReplaceString(text, "ḍ", "d");
+	text = FindAndReplaceString(text, "Đ", "d");
+	text = FindAndReplaceString(text, "đ", "d");
 	text = FindAndReplaceString(text, "Ē", "E");
 	text = FindAndReplaceString(text, "ē", "e");
 	text = FindAndReplaceString(text, "Ê", "E");
 	text = FindAndReplaceString(text, "ê", "e");
 	text = FindAndReplaceString(text, "Ě", "E");
 	text = FindAndReplaceString(text, "ě", "e");
+	text = FindAndReplaceString(text, "Ḗ", "E");
+	text = FindAndReplaceString(text, "ḗ", "e");
+	text = FindAndReplaceString(text, "Ə", "E");
+	text = FindAndReplaceString(text, "ə", "e");
 	text = FindAndReplaceString(text, "Í", "I");
 	text = FindAndReplaceString(text, "í", "i");
 	text = FindAndReplaceString(text, "Ī", "I");
@@ -602,6 +610,10 @@ std::string TransliterateText(std::string text) //convert special characters int
 	text = FindAndReplaceString(text, "ø", "ö"); //Source: Henry Adams Bellows (transl.), "The Poetic Edda", p. xxviii.
 	text = FindAndReplaceString(text, "Ǫ", "O"); //Source: Henry Adams Bellows (transl.), "The Poetic Edda", p. xxviii.
 	text = FindAndReplaceString(text, "ǫ", "o"); //Source: Henry Adams Bellows (transl.), "The Poetic Edda", p. xxviii.
+	text = FindAndReplaceString(text, "Ṓ", "O");
+	text = FindAndReplaceString(text, "ṓ", "o");
+	text = FindAndReplaceString(text, "Φ", "Ph");
+	text = FindAndReplaceString(text, "φ", "ph");
 	text = FindAndReplaceString(text, "Ș", "S");
 	text = FindAndReplaceString(text, "ș", "s");
 	text = FindAndReplaceString(text, "ß", "ss"); //Source: Henry Adams Bellows (transl.), "The Poetic Edda", p. xxviii.
@@ -617,6 +629,8 @@ std::string TransliterateText(std::string text) //convert special characters int
 	text = FindAndReplaceString(text, "û", "u");
 	text = FindAndReplaceString(text, "Ŭ", "U");
 	text = FindAndReplaceString(text, "ŭ", "u");
+	text = FindAndReplaceString(text, "Ū́", "U");
+	text = FindAndReplaceString(text, "ū́", "u");
 	text = FindAndReplaceString(text, "Ȳ", "Y");
 	text = FindAndReplaceString(text, "ȳ", "y");
 	text = FindAndReplaceString(text, "Ž", "Z");
@@ -809,7 +823,7 @@ std::string SeparateCapitalizedStringElements(std::string text)
 /**
 **  Generates a personal name.
 */
-std::string GeneratePersonalName(int civilization, int unit_type_id)
+std::string GeneratePersonalName(int language, int unit_type_id)
 {
 	const CUnitType &type = *UnitTypes[unit_type_id];
 	std::string personal_name;
@@ -845,19 +859,17 @@ std::string GeneratePersonalName(int civilization, int unit_type_id)
 			}
 		}
 	} else if (
-		civilization != -1
+		language != -1
 		&& (
-			!PlayerRaces.PersonalNames[civilization][0].empty()
-			|| !PlayerRaces.PersonalNamePrefixes[civilization][0].empty()
-			|| PlayerRaces.LanguageNouns[civilization][0]
-			|| PlayerRaces.LanguageVerbs[civilization][0]
-			|| PlayerRaces.LanguageAdjectives[civilization][0]
+			PlayerRaces.Languages[language]->LanguageNouns.size() > 0
+			|| PlayerRaces.Languages[language]->LanguageVerbs.size() > 0
+			|| PlayerRaces.Languages[language]->LanguageAdjectives.size() > 0
 		)
 	) {
 		if (type.BoolFlag[ORGANIC_INDEX].value) {
-			personal_name = GenerateName(civilization, "person");
+			personal_name = GenerateName(language, "person");
 		} else {
-			personal_name = GenerateName(civilization, type.Ident);
+			personal_name = GenerateName(language, type.Ident);
 		}
 	}
 	
@@ -866,22 +878,22 @@ std::string GeneratePersonalName(int civilization, int unit_type_id)
 	return personal_name;
 }
 
-std::string GeneratePersonalName(std::string civilization_name, std::string unit_type_ident)
+std::string GeneratePersonalName(std::string language_ident, std::string unit_type_ident)
 {
-	int civilization = PlayerRaces.GetRaceIndexByName(civilization_name.c_str());
+	int language = PlayerRaces.GetLanguageIndexByIdent(language_ident);
 	int unit_type_id = UnitTypeIdByIdent(unit_type_ident);
-	return GeneratePersonalName(civilization, unit_type_id);
+	return GeneratePersonalName(language, unit_type_id);
 }
 
-std::string GenerateName(int civilization, std::string type)
+std::string GenerateName(int language, std::string type)
 {
 	std::string name;
 	
 	if (
-		PlayerRaces.LanguageNouns[civilization][0]
-		|| PlayerRaces.LanguageVerbs[civilization][0]
-		|| PlayerRaces.LanguageAdjectives[civilization][0]
-		|| PlayerRaces.LanguageNumerals[civilization][0]
+		PlayerRaces.Languages[language]->LanguageNouns.size() > 0
+		|| PlayerRaces.Languages[language]->LanguageVerbs.size() > 0
+		|| PlayerRaces.Languages[language]->LanguageAdjectives.size() > 0
+		|| PlayerRaces.Languages[language]->LanguageNumerals.size() > 0
 	) {
 		int noun_name_count = 0;
 		std::string noun_names[PersonalNameMax];
@@ -929,192 +941,364 @@ std::string GenerateName(int civilization, std::string type)
 		std::string numeral_suffixes[PersonalNameMax];
 		int numeral_suffix_ids[PersonalNameMax];
 		
-		for (int i = 0; i < LanguageWordMax; ++i) {
-			if (!PlayerRaces.LanguageNouns[civilization][i]) {
-				break;
-			}
-			if (PlayerRaces.LanguageNouns[civilization][i]->HasTypeName(type)) { // nouns which can be used as names for this type without compounding
-				if (!PlayerRaces.LanguageNouns[civilization][i]->SingularNominative.empty() && PlayerRaces.LanguageNouns[civilization][i]->NameSingular) {
-					noun_names[noun_name_count] = PlayerRaces.LanguageNouns[civilization][i]->SingularNominative;
+		int noun_separate_prefix_count = 0;
+		std::string noun_separate_prefixes[PersonalNameMax];
+		int noun_separate_prefix_ids[PersonalNameMax];
+		int verb_separate_prefix_count = 0;
+		std::string verb_separate_prefixes[PersonalNameMax];
+		int verb_separate_prefix_ids[PersonalNameMax];
+		int adjective_separate_prefix_count = 0;
+		std::string adjective_separate_prefixes[PersonalNameMax];
+		int adjective_separate_prefix_ids[PersonalNameMax];
+		int numeral_separate_prefix_count = 0;
+		std::string numeral_separate_prefixes[PersonalNameMax];
+		int numeral_separate_prefix_ids[PersonalNameMax];
+
+		int noun_separate_infix_count = 0;
+		std::string noun_separate_infixes[PersonalNameMax];
+		int noun_separate_infix_ids[PersonalNameMax];
+		int verb_separate_infix_count = 0;
+		std::string verb_separate_infixes[PersonalNameMax];
+		int verb_separate_infix_ids[PersonalNameMax];
+		int adjective_separate_infix_count = 0;
+		std::string adjective_separate_infixes[PersonalNameMax];
+		int adjective_separate_infix_ids[PersonalNameMax];
+		int numeral_separate_infix_count = 0;
+		std::string numeral_separate_infixes[PersonalNameMax];
+		int numeral_separate_infix_ids[PersonalNameMax];
+
+		int noun_separate_suffix_count = 0;
+		std::string noun_separate_suffixes[PersonalNameMax];
+		int noun_separate_suffix_ids[PersonalNameMax];
+		int verb_separate_suffix_count = 0;
+		std::string verb_separate_suffixes[PersonalNameMax];
+		int verb_separate_suffix_ids[PersonalNameMax];
+		int adjective_separate_suffix_count = 0;
+		std::string adjective_separate_suffixes[PersonalNameMax];
+		int adjective_separate_suffix_ids[PersonalNameMax];
+		int numeral_separate_suffix_count = 0;
+		std::string numeral_separate_suffixes[PersonalNameMax];
+		int numeral_separate_suffix_ids[PersonalNameMax];
+		
+		for (size_t i = 0; i < PlayerRaces.Languages[language]->LanguageNouns.size(); ++i) {
+			if (PlayerRaces.Languages[language]->LanguageNouns[i]->HasTypeName(type)) { // nouns which can be used as names for this type without compounding
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->NameSingular) {
+					noun_names[noun_name_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative;
 					noun_name_ids[noun_name_count] = i;
 					noun_name_count += 1;
 				}
-				if (!PlayerRaces.LanguageNouns[civilization][i]->PluralNominative.empty() && PlayerRaces.LanguageNouns[civilization][i]->NamePlural) {
-					noun_names[noun_name_count] = PlayerRaces.LanguageNouns[civilization][i]->PluralNominative;
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->NamePlural) {
+					noun_names[noun_name_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative;
 					noun_name_ids[noun_name_count] = i;
 					noun_name_count += 1;
 				}
 			}
-			if (PlayerRaces.LanguageNouns[civilization][i]->HasPrefixTypeName(type)) {
-				if (PlayerRaces.LanguageNouns[civilization][i]->Uncountable) { // if is uncountable, use the nominative instead of the genitive
-					if (!PlayerRaces.LanguageNouns[civilization][i]->SingularNominative.empty() && PlayerRaces.LanguageNouns[civilization][i]->PrefixSingular) {
-						noun_prefixes[noun_prefix_count] = PlayerRaces.LanguageNouns[civilization][i]->SingularNominative;
+			if (PlayerRaces.Languages[language]->LanguageNouns[i]->HasPrefixTypeName(type)) {
+				if (PlayerRaces.Languages[language]->LanguageNouns[i]->Uncountable) { // if is uncountable, use the nominative instead of the genitive
+					if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->PrefixSingular) {
+						noun_prefixes[noun_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative;
 						noun_prefix_ids[noun_prefix_count] = i;
 						noun_prefix_count += 1;
 					}
-					if (!PlayerRaces.LanguageNouns[civilization][i]->PluralNominative.empty() && PlayerRaces.LanguageNouns[civilization][i]->PrefixPlural) {
-						noun_prefixes[noun_prefix_count] = PlayerRaces.LanguageNouns[civilization][i]->PluralNominative;
+					if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->PrefixPlural) {
+						noun_prefixes[noun_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative;
 						noun_prefix_count += 1;
 					}
 				} else {
-					if (PlayerRaces.LanguageNouns[civilization][i]->PrefixSingular) {
-						if (!PlayerRaces.LanguageNouns[civilization][i]->SingularGenitive.empty()) {
-							noun_prefixes[noun_prefix_count] = PlayerRaces.LanguageNouns[civilization][i]->SingularGenitive;
+					if (PlayerRaces.Languages[language]->LanguageNouns[i]->PrefixSingular) {
+						if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularGenitive.empty()) {
+							noun_prefixes[noun_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularGenitive;
 							noun_prefix_ids[noun_prefix_count] = i;
 							noun_prefix_count += 1;
-						} else if (!PlayerRaces.LanguageNouns[civilization][i]->SingularNominative.empty()) { //if no genitive is present, use the nominative instead
-							noun_prefixes[noun_prefix_count] = PlayerRaces.LanguageNouns[civilization][i]->SingularNominative;
-							noun_prefix_ids[noun_prefix_count] = i;
-							noun_prefix_count += 1;
-						}
-					}
-					if (PlayerRaces.LanguageNouns[civilization][i]->PrefixPlural) {
-						if (!PlayerRaces.LanguageNouns[civilization][i]->PluralGenitive.empty()) {
-							noun_prefixes[noun_prefix_count] = PlayerRaces.LanguageNouns[civilization][i]->PluralGenitive;
-							noun_prefix_ids[noun_prefix_count] = i;
-							noun_prefix_count += 1;
-						} else if (!PlayerRaces.LanguageNouns[civilization][i]->PluralNominative.empty()) { //if no genitive is present, use the nominative instead
-							noun_prefixes[noun_prefix_count] = PlayerRaces.LanguageNouns[civilization][i]->PluralNominative;
+						} else if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative.empty()) { //if no genitive is present, use the nominative instead
+							noun_prefixes[noun_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative;
 							noun_prefix_ids[noun_prefix_count] = i;
 							noun_prefix_count += 1;
 						}
 					}
+					if (PlayerRaces.Languages[language]->LanguageNouns[i]->PrefixPlural) {
+						if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralGenitive.empty()) {
+							noun_prefixes[noun_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralGenitive;
+							noun_prefix_ids[noun_prefix_count] = i;
+							noun_prefix_count += 1;
+						} else if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative.empty()) { //if no genitive is present, use the nominative instead
+							noun_prefixes[noun_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative;
+							noun_prefix_ids[noun_prefix_count] = i;
+							noun_prefix_count += 1;
+						}
+					}
 				}
 			}
-			if (PlayerRaces.LanguageNouns[civilization][i]->HasSuffixTypeName(type)) {
-				if (!PlayerRaces.LanguageNouns[civilization][i]->SingularNominative.empty() && PlayerRaces.LanguageNouns[civilization][i]->SuffixSingular) {
-					noun_suffixes[noun_suffix_count] = PlayerRaces.LanguageNouns[civilization][i]->SingularNominative;
+			if (PlayerRaces.Languages[language]->LanguageNouns[i]->HasSuffixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->SuffixSingular) {
+					noun_suffixes[noun_suffix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative;
 					noun_suffix_ids[noun_suffix_count] = i;
 					noun_suffix_count += 1;
 				}
-				if (!PlayerRaces.LanguageNouns[civilization][i]->PluralNominative.empty() && PlayerRaces.LanguageNouns[civilization][i]->SuffixPlural) {
-					noun_suffixes[noun_suffix_count] = PlayerRaces.LanguageNouns[civilization][i]->PluralNominative;
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->SuffixPlural) {
+					noun_suffixes[noun_suffix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative;
 					noun_suffix_ids[noun_suffix_count] = i;
 					noun_suffix_count += 1;
 				}
 			}
-			if (PlayerRaces.LanguageNouns[civilization][i]->HasInfixTypeName(type)) {
-				if (!PlayerRaces.LanguageNouns[civilization][i]->SingularNominative.empty() && PlayerRaces.LanguageNouns[civilization][i]->InfixSingular) {
-					noun_infixes[noun_infix_count] = PlayerRaces.LanguageNouns[civilization][i]->SingularNominative;
+			if (PlayerRaces.Languages[language]->LanguageNouns[i]->HasInfixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->InfixSingular) {
+					noun_infixes[noun_infix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative;
 					noun_infix_ids[noun_infix_count] = i;
 					noun_infix_count += 1;
 				}
-				if (!PlayerRaces.LanguageNouns[civilization][i]->PluralNominative.empty() && PlayerRaces.LanguageNouns[civilization][i]->InfixPlural) {
-					noun_infixes[noun_infix_count] = PlayerRaces.LanguageNouns[civilization][i]->PluralNominative;
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->InfixPlural) {
+					noun_infixes[noun_infix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative;
 					noun_infix_ids[noun_infix_count] = i;
 					noun_infix_count += 1;
+				}
+			}
+			
+			if (PlayerRaces.Languages[language]->LanguageNouns[i]->HasSeparatePrefixTypeName(type)) {
+				if (PlayerRaces.Languages[language]->LanguageNouns[i]->Uncountable) { // if is uncountable, use the nominative instead of the genitive
+					if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->PrefixSingular) {
+						noun_separate_prefixes[noun_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative;
+						noun_separate_prefix_ids[noun_separate_prefix_count] = i;
+						noun_separate_prefix_count += 1;
+					}
+					if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->PrefixPlural) {
+						noun_separate_prefixes[noun_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative;
+						noun_separate_prefix_count += 1;
+					}
+				} else {
+					if (PlayerRaces.Languages[language]->LanguageNouns[i]->PrefixSingular) {
+						if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularGenitive.empty()) {
+							noun_separate_prefixes[noun_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularGenitive;
+							noun_separate_prefix_ids[noun_separate_prefix_count] = i;
+							noun_separate_prefix_count += 1;
+						} else if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative.empty()) { //if no genitive is present, use the nominative instead
+							noun_separate_prefixes[noun_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative;
+							noun_separate_prefix_ids[noun_separate_prefix_count] = i;
+							noun_separate_prefix_count += 1;
+						}
+					}
+					if (PlayerRaces.Languages[language]->LanguageNouns[i]->PrefixPlural) {
+						if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralGenitive.empty()) {
+							noun_separate_prefixes[noun_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralGenitive;
+							noun_separate_prefix_ids[noun_separate_prefix_count] = i;
+							noun_separate_prefix_count += 1;
+						} else if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative.empty()) { //if no genitive is present, use the nominative instead
+							noun_separate_prefixes[noun_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative;
+							noun_separate_prefix_ids[noun_separate_prefix_count] = i;
+							noun_separate_prefix_count += 1;
+						}
+					}
+				}
+			}
+			if (PlayerRaces.Languages[language]->LanguageNouns[i]->HasSeparateSuffixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->SuffixSingular) {
+					noun_separate_suffixes[noun_separate_suffix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative;
+					noun_separate_suffix_ids[noun_separate_suffix_count] = i;
+					noun_separate_suffix_count += 1;
+				}
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->SuffixPlural) {
+					noun_separate_suffixes[noun_separate_suffix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative;
+					noun_separate_suffix_ids[noun_separate_suffix_count] = i;
+					noun_separate_suffix_count += 1;
+				}
+			}
+			if (PlayerRaces.Languages[language]->LanguageNouns[i]->HasSeparateInfixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->InfixSingular) {
+					noun_separate_infixes[noun_separate_infix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->SingularNominative;
+					noun_separate_infix_ids[noun_separate_infix_count] = i;
+					noun_separate_infix_count += 1;
+				}
+				if (!PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative.empty() && PlayerRaces.Languages[language]->LanguageNouns[i]->InfixPlural) {
+					noun_separate_infixes[noun_separate_infix_count] = PlayerRaces.Languages[language]->LanguageNouns[i]->PluralNominative;
+					noun_separate_infix_ids[noun_separate_infix_count] = i;
+					noun_separate_infix_count += 1;
 				}
 			}
 		}
 		
-		for (int i = 0; i < LanguageWordMax; ++i) {
-			if (!PlayerRaces.LanguageVerbs[civilization][i]) {
-				break;
-			}
-			if (PlayerRaces.LanguageVerbs[civilization][i]->HasPrefixTypeName(type)) { // only using verb participles for now; maybe should add more possibilities?
-				if (!PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePresent.empty()) {
-					verb_prefixes[verb_prefix_count] = PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePresent;
+		for (size_t i = 0; i < PlayerRaces.Languages[language]->LanguageVerbs.size(); ++i) {
+			if (PlayerRaces.Languages[language]->LanguageVerbs[i]->HasPrefixTypeName(type)) { // only using verb participles for now; maybe should add more possibilities?
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent.empty()) {
+					verb_prefixes[verb_prefix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent;
 					verb_prefix_ids[verb_prefix_count] = i;
 					verb_prefix_count += 1;
 				}
-				if (!PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePast.empty()) {
-					verb_prefixes[verb_prefix_count] = PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePast;
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast.empty()) {
+					verb_prefixes[verb_prefix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast;
 					verb_prefix_ids[verb_prefix_count] = i;
 					verb_prefix_count += 1;
 				}
 			}
-			if (PlayerRaces.LanguageVerbs[civilization][i]->HasSuffixTypeName(type)) {
-				if (!PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePresent.empty()) {
-					verb_suffixes[verb_suffix_count] = PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePresent;
+			if (PlayerRaces.Languages[language]->LanguageVerbs[i]->HasSuffixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent.empty()) {
+					verb_suffixes[verb_suffix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent;
 					verb_suffix_ids[verb_suffix_count] = i;
 					verb_suffix_count += 1;
 				}
-				if (!PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePast.empty()) {
-					verb_suffixes[verb_suffix_count] = PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePast;
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast.empty()) {
+					verb_suffixes[verb_suffix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast;
 					verb_suffix_ids[verb_suffix_count] = i;
 					verb_suffix_count += 1;
 				}
 			}
-			if (PlayerRaces.LanguageVerbs[civilization][i]->HasInfixTypeName(type)) {
-				if (!PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePresent.empty()) {
-					verb_infixes[verb_infix_count] = PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePresent;
+			if (PlayerRaces.Languages[language]->LanguageVerbs[i]->HasInfixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent.empty()) {
+					verb_infixes[verb_infix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent;
 					verb_infix_ids[verb_infix_count] = i;
 					verb_infix_count += 1;
 				}
-				if (!PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePast.empty()) {
-					verb_infixes[verb_infix_count] = PlayerRaces.LanguageVerbs[civilization][i]->ParticiplePast;
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast.empty()) {
+					verb_infixes[verb_infix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast;
 					verb_infix_ids[verb_infix_count] = i;
 					verb_infix_count += 1;
+				}
+			}
+			
+			if (PlayerRaces.Languages[language]->LanguageVerbs[i]->HasSeparatePrefixTypeName(type)) { // only using verb participles for now; maybe should add more possibilities?
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent.empty()) {
+					verb_separate_prefixes[verb_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent;
+					verb_separate_prefix_ids[verb_separate_prefix_count] = i;
+					verb_separate_prefix_count += 1;
+				}
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast.empty()) {
+					verb_separate_prefixes[verb_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast;
+					verb_separate_prefix_ids[verb_separate_prefix_count] = i;
+					verb_separate_prefix_count += 1;
+				}
+			}
+			if (PlayerRaces.Languages[language]->LanguageVerbs[i]->HasSeparateSuffixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent.empty()) {
+					verb_separate_suffixes[verb_separate_suffix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent;
+					verb_separate_suffix_ids[verb_separate_suffix_count] = i;
+					verb_separate_suffix_count += 1;
+				}
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast.empty()) {
+					verb_separate_suffixes[verb_separate_suffix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast;
+					verb_separate_suffix_ids[verb_separate_suffix_count] = i;
+					verb_separate_suffix_count += 1;
+				}
+			}
+			if (PlayerRaces.Languages[language]->LanguageVerbs[i]->HasSeparateInfixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent.empty()) {
+					verb_separate_infixes[verb_separate_infix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePresent;
+					verb_separate_infix_ids[verb_separate_infix_count] = i;
+					verb_separate_infix_count += 1;
+				}
+				if (!PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast.empty()) {
+					verb_separate_infixes[verb_separate_infix_count] = PlayerRaces.Languages[language]->LanguageVerbs[i]->ParticiplePast;
+					verb_separate_infix_ids[verb_separate_infix_count] = i;
+					verb_separate_infix_count += 1;
 				}
 			}
 		}
 		
-		for (int i = 0; i < LanguageWordMax; ++i) {
-			if (!PlayerRaces.LanguageAdjectives[civilization][i]) {
-				break;
-			}
-			if (PlayerRaces.LanguageAdjectives[civilization][i]->HasTypeName(type)) {
-				if (!PlayerRaces.LanguageAdjectives[civilization][i]->Word.empty()) {
-					adjective_names[adjective_name_count] = PlayerRaces.LanguageAdjectives[civilization][i]->Word;
+		for (size_t i = 0; i < PlayerRaces.Languages[language]->LanguageAdjectives.size(); ++i) {
+			if (PlayerRaces.Languages[language]->LanguageAdjectives[i]->HasTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word.empty()) {
+					adjective_names[adjective_name_count] = PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word;
 					adjective_name_ids[adjective_name_count] = i;
 					adjective_name_count += 1;
 				}
 			}
-			if (PlayerRaces.LanguageAdjectives[civilization][i]->HasPrefixTypeName(type)) {
-				if (!PlayerRaces.LanguageAdjectives[civilization][i]->Word.empty()) {
-					adjective_prefixes[adjective_prefix_count] = PlayerRaces.LanguageAdjectives[civilization][i]->Word;
+			if (PlayerRaces.Languages[language]->LanguageAdjectives[i]->HasPrefixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word.empty()) {
+					adjective_prefixes[adjective_prefix_count] = PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word;
 					adjective_prefix_ids[adjective_prefix_count] = i;
 					adjective_prefix_count += 1;
 				}
 			}
-			if (PlayerRaces.LanguageAdjectives[civilization][i]->HasSuffixTypeName(type)) {
-				if (!PlayerRaces.LanguageAdjectives[civilization][i]->Word.empty()) {
-					adjective_suffixes[adjective_suffix_count] = PlayerRaces.LanguageAdjectives[civilization][i]->Word;
+			if (PlayerRaces.Languages[language]->LanguageAdjectives[i]->HasSuffixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word.empty()) {
+					adjective_suffixes[adjective_suffix_count] = PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word;
 					adjective_suffix_ids[adjective_suffix_count] = i;
 					adjective_suffix_count += 1;
 				}
 			}
-			if (PlayerRaces.LanguageAdjectives[civilization][i]->HasInfixTypeName(type)) {
-				if (!PlayerRaces.LanguageAdjectives[civilization][i]->Word.empty()) {
-					adjective_infixes[adjective_infix_count] = PlayerRaces.LanguageAdjectives[civilization][i]->Word;
+			if (PlayerRaces.Languages[language]->LanguageAdjectives[i]->HasInfixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word.empty()) {
+					adjective_infixes[adjective_infix_count] = PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word;
 					adjective_infix_ids[adjective_infix_count] = i;
 					adjective_infix_count += 1;
 				}
 			}
+			
+			if (PlayerRaces.Languages[language]->LanguageAdjectives[i]->HasSeparatePrefixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word.empty()) {
+					adjective_separate_prefixes[adjective_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word;
+					adjective_separate_prefix_ids[adjective_separate_prefix_count] = i;
+					adjective_separate_prefix_count += 1;
+				}
+			}
+			if (PlayerRaces.Languages[language]->LanguageAdjectives[i]->HasSeparateSuffixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word.empty()) {
+					adjective_separate_suffixes[adjective_separate_suffix_count] = PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word;
+					adjective_separate_suffix_ids[adjective_separate_suffix_count] = i;
+					adjective_separate_suffix_count += 1;
+				}
+			}
+			if (PlayerRaces.Languages[language]->LanguageAdjectives[i]->HasSeparateInfixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word.empty()) {
+					adjective_separate_infixes[adjective_separate_infix_count] = PlayerRaces.Languages[language]->LanguageAdjectives[i]->Word;
+					adjective_separate_infix_ids[adjective_separate_infix_count] = i;
+					adjective_separate_infix_count += 1;
+				}
+			}
 		}
 		
-		for (int i = 0; i < LanguageWordMax; ++i) {
-			if (!PlayerRaces.LanguageNumerals[civilization][i]) {
-				break;
-			}
-			if (PlayerRaces.LanguageNumerals[civilization][i]->HasPrefixTypeName(type)) {
-				if (!PlayerRaces.LanguageNumerals[civilization][i]->Word.empty()) {
-					numeral_prefixes[numeral_prefix_count] = PlayerRaces.LanguageNumerals[civilization][i]->Word;
+		for (size_t i = 0; i < PlayerRaces.Languages[language]->LanguageNumerals.size(); ++i) {
+			if (PlayerRaces.Languages[language]->LanguageNumerals[i]->HasPrefixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNumerals[i]->Word.empty()) {
+					numeral_prefixes[numeral_prefix_count] = PlayerRaces.Languages[language]->LanguageNumerals[i]->Word;
 					numeral_prefix_ids[numeral_prefix_count] = i;
 					numeral_prefix_count += 1;
 				}
 			}
-			if (PlayerRaces.LanguageNumerals[civilization][i]->HasSuffixTypeName(type)) {
-				if (!PlayerRaces.LanguageNumerals[civilization][i]->Word.empty()) {
-					numeral_suffixes[numeral_suffix_count] = PlayerRaces.LanguageNumerals[civilization][i]->Word;
+			if (PlayerRaces.Languages[language]->LanguageNumerals[i]->HasSuffixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNumerals[i]->Word.empty()) {
+					numeral_suffixes[numeral_suffix_count] = PlayerRaces.Languages[language]->LanguageNumerals[i]->Word;
 					numeral_suffix_ids[numeral_suffix_count] = i;
 					numeral_suffix_count += 1;
 				}
 			}
-			if (PlayerRaces.LanguageNumerals[civilization][i]->HasInfixTypeName(type)) {
-				if (!PlayerRaces.LanguageNumerals[civilization][i]->Word.empty()) {
-					numeral_infixes[numeral_infix_count] = PlayerRaces.LanguageNumerals[civilization][i]->Word;
+			if (PlayerRaces.Languages[language]->LanguageNumerals[i]->HasInfixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNumerals[i]->Word.empty()) {
+					numeral_infixes[numeral_infix_count] = PlayerRaces.Languages[language]->LanguageNumerals[i]->Word;
 					numeral_infix_ids[numeral_infix_count] = i;
 					numeral_infix_count += 1;
 				}
 			}
+			
+			if (PlayerRaces.Languages[language]->LanguageNumerals[i]->HasSeparatePrefixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNumerals[i]->Word.empty()) {
+					numeral_separate_prefixes[numeral_separate_prefix_count] = PlayerRaces.Languages[language]->LanguageNumerals[i]->Word;
+					numeral_separate_prefix_ids[numeral_separate_prefix_count] = i;
+					numeral_separate_prefix_count += 1;
+				}
+			}
+			if (PlayerRaces.Languages[language]->LanguageNumerals[i]->HasSeparateSuffixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNumerals[i]->Word.empty()) {
+					numeral_separate_suffixes[numeral_separate_suffix_count] = PlayerRaces.Languages[language]->LanguageNumerals[i]->Word;
+					numeral_separate_suffix_ids[numeral_separate_suffix_count] = i;
+					numeral_separate_suffix_count += 1;
+				}
+			}
+			if (PlayerRaces.Languages[language]->LanguageNumerals[i]->HasSeparateInfixTypeName(type)) {
+				if (!PlayerRaces.Languages[language]->LanguageNumerals[i]->Word.empty()) {
+					numeral_separate_infixes[numeral_separate_infix_count] = PlayerRaces.Languages[language]->LanguageNumerals[i]->Word;
+					numeral_separate_infix_ids[numeral_separate_infix_count] = i;
+					numeral_separate_infix_count += 1;
+				}
+			}
 		}
 		
-		if (noun_name_count > 0 || adjective_name_count > 0 || noun_prefix_count > 0 || verb_prefix_count > 0 || adjective_prefix_count > 0 || numeral_prefix_count > 0) {
+		if (noun_name_count > 0 || adjective_name_count > 0 || noun_prefix_count > 0 || verb_prefix_count > 0 || adjective_prefix_count > 0 || numeral_prefix_count > 0 || noun_separate_prefix_count > 0 || verb_separate_prefix_count > 0 || adjective_separate_prefix_count > 0 || numeral_separate_prefix_count > 0) {
 			int total_prefix_count = noun_prefix_count + verb_prefix_count + adjective_prefix_count + numeral_prefix_count;
 			int total_suffix_count = noun_suffix_count + verb_suffix_count + adjective_suffix_count + numeral_suffix_count;
 			int total_infix_count = noun_infix_count + verb_infix_count + adjective_infix_count + numeral_infix_count;
-			int random_number = SyncRand(noun_name_count + adjective_name_count + (total_prefix_count * total_suffix_count) + ((total_prefix_count + total_suffix_count) / 2) * total_infix_count);
+			int total_separate_prefix_count = noun_separate_prefix_count + verb_separate_prefix_count + adjective_separate_prefix_count + numeral_separate_prefix_count;
+			int total_separate_suffix_count = noun_separate_suffix_count + verb_separate_suffix_count + adjective_separate_suffix_count + numeral_separate_suffix_count;
+			int total_separate_infix_count = noun_separate_infix_count + verb_separate_infix_count + adjective_separate_infix_count + numeral_separate_infix_count;
+			int random_number = SyncRand(noun_name_count + adjective_name_count + (total_prefix_count * total_suffix_count) + ((total_prefix_count + total_suffix_count) / 2) * total_infix_count + (total_separate_prefix_count * total_separate_suffix_count) + ((total_separate_prefix_count + total_separate_suffix_count) / 2) * total_separate_infix_count);
 			if (random_number < noun_name_count + adjective_name_count) { //entire name
 				random_number = SyncRand(noun_name_count + adjective_name_count);
 				if (random_number < noun_name_count) {
@@ -1170,9 +1354,9 @@ std::string GenerateName(int civilization, std::string type)
 					suffix = numeral_suffixes[suffix_id];
 				}
 
-				if (prefix_word_type == "numeral" && PlayerRaces.LanguageNumerals[civilization][numeral_prefix_ids[prefix_id]]->Number > 1 && suffix_word_type == "noun") { // if requires plural (by being a numeral greater than one) and suffix is a noun
+				if (prefix_word_type == "numeral" && PlayerRaces.Languages[language]->LanguageNumerals[numeral_prefix_ids[prefix_id]]->Number > 1 && suffix_word_type == "noun") { // if requires plural (by being a numeral greater than one) and suffix is a noun
 					//then replace the suffix with its plural form
-					suffix = PlayerRaces.LanguageNouns[civilization][noun_suffix_ids[suffix_id]]->PluralNominative;
+					suffix = PlayerRaces.Languages[language]->LanguageNouns[noun_suffix_ids[suffix_id]]->PluralNominative;
 				}
 					
 				suffix = DecapitalizeString(suffix);
@@ -1258,9 +1442,9 @@ std::string GenerateName(int civilization, std::string type)
 					suffix = numeral_suffixes[suffix_id];
 				}
 
-				if (prefix_word_type == "numeral" && PlayerRaces.LanguageNumerals[civilization][numeral_prefix_ids[prefix_id]]->Number > 1 && suffix_word_type == "noun") { // if requires plural (by being a numeral greater than one) and suffix is a noun
+				if (prefix_word_type == "numeral" && PlayerRaces.Languages[language]->LanguageNumerals[numeral_prefix_ids[prefix_id]]->Number > 1 && suffix_word_type == "noun") { // if requires plural (by being a numeral greater than one) and suffix is a noun
 					//then replace the suffix with its plural form
-					suffix = PlayerRaces.LanguageNouns[civilization][noun_suffix_ids[suffix_id]]->PluralNominative;
+					suffix = PlayerRaces.Languages[language]->LanguageNouns[noun_suffix_ids[suffix_id]]->PluralNominative;
 				}
 					
 				infix = DecapitalizeString(infix);
@@ -1288,6 +1472,153 @@ std::string GenerateName(int civilization, std::string type)
 				}
 				name = prefix;
 				name += infix;
+				name += suffix;
+			} else if (random_number < (noun_name_count + (total_prefix_count * total_suffix_count) + ((total_prefix_count + total_suffix_count) / 2) * total_infix_count + (total_separate_prefix_count * total_separate_suffix_count))) { //separate prefix + separate suffix
+				std::string prefix;
+				std::string suffix;
+				int prefix_id;
+				int suffix_id;
+				std::string prefix_word_type;
+				std::string suffix_word_type;
+				
+				//choose the word type of the prefix, and the prefix itself
+				random_number = SyncRand(noun_separate_prefix_count + verb_separate_prefix_count + adjective_separate_prefix_count + numeral_separate_prefix_count);
+				if (random_number < noun_separate_prefix_count) {
+					prefix_word_type = "noun";
+					prefix_id = SyncRand(noun_separate_prefix_count);
+					prefix = noun_separate_prefixes[prefix_id];
+				} else if (random_number < (noun_separate_prefix_count + verb_separate_prefix_count)) {
+					prefix_word_type = "verb";
+					prefix_id = SyncRand(verb_separate_prefix_count);
+					prefix = verb_separate_prefixes[prefix_id];
+				} else if (random_number < (noun_separate_prefix_count + verb_separate_prefix_count + adjective_separate_prefix_count)) {
+					prefix_word_type = "adjective";
+					prefix_id = SyncRand(adjective_separate_prefix_count);
+					prefix = adjective_separate_prefixes[prefix_id];
+				} else if (random_number < (noun_separate_prefix_count + verb_separate_prefix_count + adjective_separate_prefix_count + numeral_separate_prefix_count)) {
+					prefix_word_type = "numeral";
+					prefix_id = SyncRand(numeral_separate_prefix_count);
+					prefix = numeral_separate_prefixes[prefix_id];
+				}
+
+				//choose the word type of the suffix, and the suffix itself
+				random_number = SyncRand(noun_separate_suffix_count + verb_separate_suffix_count + adjective_separate_suffix_count + numeral_separate_suffix_count);
+				if (random_number < noun_separate_suffix_count) {
+					suffix_word_type = "noun";
+					suffix_id = SyncRand(noun_separate_suffix_count);
+					suffix = noun_separate_suffixes[suffix_id];
+				} else if (random_number < (noun_separate_suffix_count + verb_separate_suffix_count)) {
+					suffix_word_type = "verb";
+					suffix_id = SyncRand(verb_separate_suffix_count);
+					suffix = verb_separate_suffixes[suffix_id];
+				} else if (random_number < (noun_separate_suffix_count + verb_separate_suffix_count + adjective_separate_suffix_count)) {
+					suffix_word_type = "adjective";
+					suffix_id = SyncRand(adjective_separate_suffix_count);
+					suffix = adjective_separate_suffixes[suffix_id];
+				} else if (random_number < (noun_separate_suffix_count + verb_separate_suffix_count + adjective_separate_suffix_count + numeral_separate_suffix_count)) {
+					suffix_word_type = "numeral";
+					suffix_id = SyncRand(numeral_separate_suffix_count);
+					suffix = numeral_separate_suffixes[suffix_id];
+				}
+
+				if (prefix_word_type == "numeral" && PlayerRaces.Languages[language]->LanguageNumerals[numeral_separate_prefix_ids[prefix_id]]->Number > 1 && suffix_word_type == "noun") { // if requires plural (by being a numeral greater than one) and suffix is a noun
+					//then replace the suffix with its plural form
+					suffix = PlayerRaces.Languages[language]->LanguageNouns[noun_separate_suffix_ids[suffix_id]]->PluralNominative;
+				}
+				
+				if (suffix_word_type == "noun" && type != "province" && type != "settlement") { //if type is neither a province nor a settlement, add an article at the beginning
+					name += PlayerRaces.Languages[language]->GetArticle(PlayerRaces.Languages[language]->LanguageNouns[noun_separate_suffix_ids[suffix_id]]->Gender, "nominative", true);
+					name += " ";
+				}
+					
+				name += prefix;
+				name += " ";
+				name += suffix;
+			} else if (random_number < (noun_name_count + (total_prefix_count * total_suffix_count) + ((total_prefix_count + total_suffix_count) / 2) * total_infix_count + (total_separate_prefix_count * total_separate_suffix_count) + ((total_separate_prefix_count + total_separate_suffix_count) / 2) * total_separate_infix_count)) { //separate prefix + separate infix + separate suffix
+				std::string prefix;
+				std::string infix;
+				std::string suffix;
+				int prefix_id;
+				int infix_id;
+				int suffix_id;
+				std::string prefix_word_type;
+				std::string infix_word_type;
+				std::string suffix_word_type;
+				
+				//choose the word type of the prefix, and the prefix itself
+				random_number = SyncRand(noun_separate_prefix_count + verb_separate_prefix_count + adjective_separate_prefix_count + numeral_separate_prefix_count);
+				if (random_number < noun_separate_prefix_count) {
+					prefix_word_type = "noun";
+					prefix_id = SyncRand(noun_separate_prefix_count);
+					prefix = noun_separate_prefixes[prefix_id];
+				} else if (random_number < (noun_separate_prefix_count + verb_separate_prefix_count)) {
+					prefix_word_type = "verb";
+					prefix_id = SyncRand(verb_separate_prefix_count);
+					prefix = verb_separate_prefixes[prefix_id];
+				} else if (random_number < (noun_separate_prefix_count + verb_separate_prefix_count + adjective_separate_prefix_count)) {
+					prefix_word_type = "adjective";
+					prefix_id = SyncRand(adjective_separate_prefix_count);
+					prefix = adjective_separate_prefixes[prefix_id];
+				} else if (random_number < (noun_separate_prefix_count + verb_separate_prefix_count + adjective_separate_prefix_count + numeral_separate_prefix_count)) {
+					prefix_word_type = "numeral";
+					prefix_id = SyncRand(numeral_separate_prefix_count);
+					prefix = numeral_separate_prefixes[prefix_id];
+				}
+
+				//choose the word type of the infix, and the infix itself
+				random_number = SyncRand(noun_separate_infix_count + verb_separate_infix_count + adjective_separate_infix_count + numeral_separate_infix_count);
+				if (random_number < noun_separate_infix_count) {
+					infix_word_type = "noun";
+					infix_id = SyncRand(noun_separate_infix_count);
+					infix = noun_separate_infixes[infix_id];
+				} else if (random_number < (noun_separate_infix_count + verb_separate_infix_count)) {
+					infix_word_type = "verb";
+					infix_id = SyncRand(verb_separate_infix_count);
+					infix = verb_separate_infixes[infix_id];
+				} else if (random_number < (noun_separate_infix_count + verb_separate_infix_count + adjective_separate_infix_count)) {
+					infix_word_type = "adjective";
+					infix_id = SyncRand(adjective_separate_infix_count);
+					infix = adjective_separate_infixes[infix_id];
+				} else if (random_number < (noun_separate_infix_count + verb_separate_infix_count + adjective_separate_infix_count + numeral_separate_infix_count)) {
+					infix_word_type = "numeral";
+					infix_id = SyncRand(numeral_separate_infix_count);
+					infix = numeral_separate_infixes[infix_id];
+				}
+
+				//choose the word type of the suffix, and the suffix itself
+				random_number = SyncRand(noun_separate_suffix_count + verb_separate_suffix_count + adjective_separate_suffix_count + numeral_separate_suffix_count);
+				if (random_number < noun_separate_suffix_count) {
+					suffix_word_type = "noun";
+					suffix_id = SyncRand(noun_separate_suffix_count);
+					suffix = noun_separate_suffixes[suffix_id];
+				} else if (random_number < (noun_separate_suffix_count + verb_separate_suffix_count)) {
+					suffix_word_type = "verb";
+					suffix_id = SyncRand(verb_separate_suffix_count);
+					suffix = verb_separate_suffixes[suffix_id];
+				} else if (random_number < (noun_separate_suffix_count + verb_separate_suffix_count + adjective_separate_suffix_count)) {
+					suffix_word_type = "adjective";
+					suffix_id = SyncRand(adjective_separate_suffix_count);
+					suffix = adjective_separate_suffixes[suffix_id];
+				} else if (random_number < (noun_separate_suffix_count + verb_separate_suffix_count + adjective_separate_suffix_count + numeral_separate_suffix_count)) {
+					suffix_word_type = "numeral";
+					suffix_id = SyncRand(numeral_separate_suffix_count);
+					suffix = numeral_separate_suffixes[suffix_id];
+				}
+
+				if (prefix_word_type == "numeral" && PlayerRaces.Languages[language]->LanguageNumerals[numeral_separate_prefix_ids[prefix_id]]->Number > 1 && suffix_word_type == "noun") { // if requires plural (by being a numeral greater than one) and suffix is a noun
+					//then replace the suffix with its plural form
+					suffix = PlayerRaces.Languages[language]->LanguageNouns[noun_separate_suffix_ids[suffix_id]]->PluralNominative;
+				}
+					
+				if (suffix_word_type == "noun" && type != "province" && type != "settlement") { //if type is neither a province nor a settlement, add an article at the beginning
+					name += PlayerRaces.Languages[language]->GetArticle(PlayerRaces.Languages[language]->LanguageNouns[noun_separate_suffix_ids[suffix_id]]->Gender, "nominative", true);
+					name += " ";
+				}
+					
+				name += prefix;
+				name += " ";
+				name += infix;
+				name += " ";
 				name += suffix;
 			}
 		}
